@@ -2,9 +2,9 @@ name: Haskell Stack CI
 
 on:
   push:
-    branches: ["experimental", "feature/**", "refactor/**"]
+    branches: ["develop", "feature/**", "refactor/**"]
   pull_request:
-    branches: ["experimental"]
+    branches: ["develop"]
   workflow_dispatch:
 
 permissions:
