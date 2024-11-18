@@ -1,0 +1,76 @@
+name: euterpea
+version: 0.1.0.0
+github: "githubuser/euterpea"
+license: BSD-3-Clause
+author: "Author name here"
+maintainer: "example@example.com"
+copyright: "2024 Author name here"
+
+description: Please see the README on GitHub at <https://github.com/githubuser/my-euterpea#readme>
+
+extra-source-files:
+  - README.md
+
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Widentities
+  - -Wincomplete-record-updates
+  - -Wincomplete-uni-patterns
+  - -Wmissing-export-lists
+  - -Wmissing-home-modules
+  - -Wpartial-fields
+  - -Wredundant-constraints
+
+library:
+  source-dirs: .
+  exposed-modules:
+    - Euterpea
+    - Euterpea.Music
+    - Control.Arrow.ArrowP
+    - Control.SF.SF
+    - Euterpea.IO.Audio.Basics
+    - Euterpea.IO.Audio.BasicSigFuns
+    - Euterpea.IO.Audio.IO
+    - Euterpea.IO.Audio.Render
+    - Euterpea.IO.Audio.Types
+    - Euterpea.IO.Audio.CSound
+    - Euterpea.IO.Audio
+    - Euterpea.IO.MIDI.MEvent
+    - Euterpea.IO.MIDI.MidiIO
+    - Euterpea.IO.MIDI.FromMidi
+    - Euterpea.IO.MIDI.FromMidi2
+    - Euterpea.IO.MIDI.GeneralMidi
+    - Euterpea.IO.MIDI.ToMidi
+    - Euterpea.IO.MIDI.ToMidi2
+    - Euterpea.IO.MIDI.Play
+    - Euterpea.IO.MIDI.ExportMidiFile
+    - Euterpea.IO.MIDI
+
+  dependencies:
+    - base
+    - arrows
+    - array
+    - deepseq
+    - random
+    - PortMidi
+    - HCodecs
+    - stm
+    - containers
+    - bytestring
+    - heap
+    - vector
+    - concurrency
+    # - vivid
+
+
+tests:
+  spec:
+    main: Spec.hs
+    source-dirs: test
+    dependencies:
+      - euterpea
+      - base
+      - hspec
+      - QuickCheck
+      - hspec-discover

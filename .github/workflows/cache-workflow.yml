@@ -1,0 +1,35 @@
+name: Cache Workflow
+
+on: workflow_call
+
+jobs:
+  cache:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Combined Setup and Initial Debugging Step
+      - name: Set up Stack Environment
+        run: |
+          echo "Checking and setting up necessary Stack directories..."
+          for dir in ~/.stack/pantry ~/.stack/indices ~/.stack/programs ~/.stack/setup-exe-cache ~/.stack/snapshots; do
+            mkdir -p "$dir"
+            echo "Ensured directory $dir exists."
+          done
+
+      # Consolidated Caching Steps
+      - name: Cache Stack Components
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.stack/pantry
+            ~/.stack/indices
+            ~/.stack/programs
+            ~/.stack/setup-exe-cache
+            ~/.stack/snapshots
+          key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml', 'package.yaml', '*.cabal') }}-v3
+          restore-keys: ${{ runner.os }}-stack-

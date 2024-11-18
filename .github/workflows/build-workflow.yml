@@ -1,0 +1,73 @@
+name: Build Workflow
+
+on: workflow_call
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Cache Stack
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.stack
+            .stack-work
+          key: ${{ runner.os }}-stack-cache-${{ hashFiles('stack.yaml', 'package.yaml', '*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-stack-cache-
+            ${{ runner.os }}-stack-
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          stack setup
+          stack exec -- ghc --version
+          
+      - name: Build
+        run: stack build --jobs=4
+      
+      - name: Cache Build Artifacts
+        uses: actions/cache@v3
+        with:
+          path: .stack-work
+          key: ${{ runner.os }}-build-cache-${{ hashFiles('stack.yaml', 'package.yaml', '*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-build-cache-
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Restore Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.stack
+            .stack-work
+          key: ${{ runner.os }}-stack-cache-${{ hashFiles('stack.yaml', 'package.yaml', '*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-stack-cache-
+            ${{ runner.os }}-stack-
+      
+      - name: Restore Build Artifacts
+        uses: actions/cache@v3
+        with:
+          path: .stack-work
+          key: ${{ runner.os }}-build-cache-${{ hashFiles('stack.yaml', 'package.yaml', '*.cabal') }}
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          stack setup
+          stack exec -- ghc --version
+
+      - name: Test
+        run: stack test --jobs=4

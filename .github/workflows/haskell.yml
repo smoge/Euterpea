@@ -1,0 +1,30 @@
+name: Haskell Stack CI
+
+on:
+  push:
+    branches: ["experimental", "feature/**", "refactor/**"]
+  pull_request:
+    branches: ["experimental"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    uses: ./.github/workflows/setup-workflow.yml
+  
+  cache:
+    uses: ./.github/workflows/cache-workflow.yml
+    
+  build:
+    needs: [setup, cache]
+    uses: ./.github/workflows/build-workflow.yml
+  
+  lint_format:
+    needs: build
+    uses: ./.github/workflows/lint-format-workflow.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true

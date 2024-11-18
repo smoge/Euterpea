@@ -1,0 +1,15 @@
+# - group: { name: future, enabled: true }
+# - group: { name: extra, enabled: true }
+# - group: { name: use-lens, enabled: true }
+# - group: { name: generalise, enabled: true }
+# - group: {name: partial, enabled: true}
+
+# - arguments: [ --cross, --refactor, -XQuasiQuotes]
+
+# - extensions:
+#   - default: true
+
+# - ignore: { name: Avoid lambda }
+# - ignore: { name: Unused LANGUAGE pragma }
+# - ignore: { name: Use camelCase }
+

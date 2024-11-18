@@ -1,0 +1,41 @@
+name: Haskell CI
+
+on:
+  push:
+    branches: [ "experimental" ]
+  pull_request:
+    branches: [ "experimental" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-haskell@v1
+      with:
+        ghc-version: '9.8.3'
+
+    - name: Cache dependencies
+      uses: actions/cache@v4.1.2
+      with:
+        path: |
+          ~/.stack
+          .stack-work
+        key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml', 'package.yaml', '*.cabal') }}
+        restore-keys: |
+          ${{ runner.os }}-stack-
+
+    - name: Install dependencies
+      run: stack build --only-dependencies
+
+    - name: Build project
+      run: stack build
+
+    - name: Run tests
+      run: stack test
+
+    

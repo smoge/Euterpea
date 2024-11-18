@@ -1,0 +1,3 @@
+:set +m
+:set -XOverloadedStrings
+:set prompt ">"

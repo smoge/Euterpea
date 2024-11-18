@@ -1,0 +1,103 @@
+name: Lint and Format Workflow
+on: workflow_call
+
+jobs:
+  lint_format:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true
+
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up cache for Stack binary
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.stack
+            ./.stack-work 
+          key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml', 'package.yaml', '*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-stack-
+
+      - name: Install Stack
+        run: |
+          if ! stack --version &> /dev/null; then
+            curl -sSL https://get.haskellstack.org/ | sh
+          else
+            echo "Stack is already installed"
+          fi
+
+      - name: Install HLint and Ormolu
+        run: stack install hlint ormolu
+      
+      # - name: Run HLint
+      #   uses: domdere/haskell-lint-action@v1.0.0
+      #   with:
+      #     token: ${{ secrets.GH_TOKEN }}
+          
+      - name: Run HLint
+        id: hlint
+        run: |
+          echo "::group::HLint Analysis"
+          FILES=$(find . -name '*.hs')
+          ISSUES=""
+          
+          if [[ -z "$FILES" ]]; then
+            echo "No Haskell files found to lint."
+            exit 0
+          fi
+          
+          for file in $FILES; do
+            echo "Linting $file"
+            if ! RESULT=$(stack exec -- hlint "$file"); then
+              echo "::error file=$file::HLint found issues"
+              ISSUES="${ISSUES}${RESULT}\n"
+            fi
+          done
+          
+          if [[ ! -z "$ISSUES" ]]; then
+            echo "$ISSUES"
+            # exit 1
+          fi
+          echo "::endgroup::"
+
+      - name: Check Ormolu formatting
+        id: format
+        run: |
+          echo "::group::Ormolu Format Check"
+          FAILED=0
+          for file in $(find . -name '*.hs'); do
+            echo "Checking format for $file"
+            if ! stack exec -- ormolu --mode check "$file"; then
+              echo "::error file=$file::File needs formatting"
+              #FAILED=1
+            fi
+          done
+          
+          if [[ "$FAILED" == "1" ]]; then
+            echo "Some files need formatting. Run 'stack exec -- ormolu --mode inplace <file>' locally to fix."
+            #exit 1
+          fi
+          echo "::endgroup::"
+
+      # - name: Commit changes
+      #   if: steps.format.outputs.FAILED == '1'
+      #   run: |
+      #     git config --local user.email "action@github.com"
+      #     git config --local user.name "GitHub Action"
+      #     git add .
+      #     git commit -m "Apply code formatting"
+
+      # - name: Create Pull Request
+      #   uses: peter-evans/create-pull-request@v3
+      #   with:
+      #     token: ${{ secrets.GH_TOKEN }}
+      #     commit-message: Update Haskell formatting
+      #     committer: Bernardo Barros <bernardobarros@gmail.com> 
+      #     author: Bernardo Barros <bernardobarros@gmail.com> 
+      #     branch: format
+      #     title: Update Haskell formatting
+      #     body: This PR updates the Haskell formatting using the latest linting and formatting checks.
