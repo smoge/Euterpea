@@ -1,6 +1,65 @@
-
 Euterpea/.DS_Store
 .DS_Store
 .stack-work/
 dist/
 dist-newstyle/
+reference/
+notes/
+.vscode/
+*.lock
+
+# Haskell build artifacts
+dist
+dist-*
+cabal-dev
+*.o
+*.hi
+*.hie
+*.chi
+*.chs.h
+*.dyn_o
+*.dyn_hi
+.hpc
+.hsenv
+.cabal-sandbox/
+cabal.sandbox.config
+*.prof
+*.aux
+*.hp
+*.eventlog
+
+# Stack
+.stack-work/
+stack.yaml.lock
+
+# Cabal
+.cabal-debug
+cabal.project.local
+cabal.project.local~
+.ghc.environment.*
+
+# IDE/Editor files
+.idea/
+.vscode/
+*.swp
+*~
+
+# Mac OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Binary files
+*.exe
+*.exe.manifest
+*.dll
+*.so
+*.dylib
+
+# Test files
+.HTF/
+.tasty-rerun-log
+
+# Miscellaneous
+tags
+TAGS
