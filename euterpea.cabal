@@ -6,12 +6,12 @@ cabal-version: 2.2
 
 name:           euterpea
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/my-euterpea#readme>
-homepage:       https://github.com/githubuser/euterpea#readme
-bug-reports:    https://github.com/githubuser/euterpea/issues
-author:         Author name here
+description:    Please see the README on GitHub at <https://github.com/smoge/euterpea-oxum>
+homepage:       https://github.com/smoge/euterpea-oxum#readme
+bug-reports:    https://github.com/smoge/euterpea-oxum/issues
+author:         Author
 maintainer:     example@example.com
-copyright:      2024 Author name here
+copyright:      2024 Author
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
@@ -20,7 +20,12 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/euterpea
+  location: https://github.com/smoge/euterpea-oxum
+
+flag bench
+  description: Build benchmarks
+  manual: True
+  default: False
 
 library
   exposed-modules:
@@ -85,3 +90,25 @@ test-suite spec
     , hspec
     , hspec-discover
   default-language: Haskell2010
+
+benchmark euterpea-bench
+  type: exitcode-stdio-1.0
+  main-is: Benchmarks.hs
+  other-modules:
+      Paths_euterpea
+  autogen-modules:
+      Paths_euterpea
+  hs-source-dirs:
+      bench
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -O2 -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base
+    , containers
+    , criterion >=1.5.9.0
+    , deepseq
+    , euterpea
+  default-language: Haskell2010
+  if flag(bench)
+    buildable: True
+  else
+    buildable: False

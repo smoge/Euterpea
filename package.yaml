@@ -1,26 +1,25 @@
 name: euterpea
 version: 0.1.0.0
-github: "githubuser/euterpea"
+github: "smoge/euterpea-oxum"
 license: BSD-3-Clause
-author: "Author name here"
+author: "Author"
 maintainer: "example@example.com"
-copyright: "2024 Author name here"
-
-description: Please see the README on GitHub at <https://github.com/githubuser/my-euterpea#readme>
+copyright: "2024 Author"
+description: Please see the README on GitHub at <https://github.com/smoge/euterpea-oxum>
 
 extra-source-files:
-  - README.md
+ - README.md
 
 ghc-options:
-  - -Wall
-  - -Wcompat
-  - -Widentities
-  - -Wincomplete-record-updates
-  - -Wincomplete-uni-patterns
-  - -Wmissing-export-lists
-  - -Wmissing-home-modules
-  - -Wpartial-fields
-  - -Wredundant-constraints
+ - -Wall
+ - -Wcompat
+ - -Widentities
+ - -Wincomplete-record-updates
+ - -Wincomplete-uni-patterns
+ - -Wmissing-export-lists
+ - -Wmissing-home-modules
+ - -Wpartial-fields
+ - -Wredundant-constraints
 
 library:
   source-dirs: ./src
@@ -46,7 +45,6 @@ library:
     - Euterpea.IO.MIDI.Play
     - Euterpea.IO.MIDI.ExportMidiFile
     - Euterpea.IO.MIDI
-
   dependencies:
     - base
     - arrows
@@ -61,8 +59,6 @@ library:
     - heap
     - vector
     - concurrency
-    # - vivid
-
 
 tests:
   spec:
@@ -74,3 +70,31 @@ tests:
       - hspec
       - QuickCheck
       - hspec-discover
+
+benchmarks:
+  euterpea-bench:
+    main: Benchmarks.hs
+    source-dirs: bench
+    dependencies:
+      - base
+      - euterpea
+      - criterion >= 1.5.9.0
+      - deepseq
+      - containers
+    ghc-options:
+      - -O2
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    when:
+      condition: flag(bench)
+      then:
+        buildable: true
+      else:
+        buildable: false
+
+flags:
+  bench:
+    description: Build benchmarks
+    manual: true
+    default: false
