@@ -290,71 +290,71 @@ instance NFData MidiMessage where
   rnf (Std m) = rnf m
   rnf (ANote c k v d) = rnf c `seq` rnf k `seq` rnf v `seq` rnf d
 
-instance (NFData a) => NFData (Music a) where
-  rnf (a :+: b) = rnf a `seq` rnf b
-  rnf (a :=: b) = rnf a `seq` rnf b
-  rnf (Prim p) = rnf p
-  rnf (Modify c m) = rnf c `seq` rnf m
+-- instance (NFData a) => NFData (Music a) where
+--   rnf (a :+: b) = rnf a `seq` rnf b
+--   rnf (a :=: b) = rnf a `seq` rnf b
+--   rnf (Prim p) = rnf p
+--   rnf (Modify c m) = rnf c `seq` rnf m
 
-instance (NFData a) => NFData (Primitive a) where
-  rnf (Note d a) = rnf d `seq` rnf a
-  rnf (Rest d) = rnf d
+-- instance (NFData a) => NFData (Primitive a) where
+--   rnf (Note d a) = rnf d `seq` rnf a
+--   rnf (Rest d) = rnf d
 
-instance NFData Control where
-  rnf :: Control -> ()
-  rnf (Tempo t) = rnf t
-  rnf (Transpose t) = rnf t
-  rnf (Instrument i) = rnf i
-  rnf (Phrase xs) = rnf xs
-  rnf (Custom s) = rnf s
-  rnf (KeySig r m) = rnf r `seq` rnf m
+-- instance NFData Control where
+--   rnf :: Control -> ()
+--   rnf (Tempo t) = rnf t
+--   rnf (Transpose t) = rnf t
+--   rnf (Instrument i) = rnf i
+--   rnf (Phrase xs) = rnf xs
+--   rnf (Custom s) = rnf s
+--   rnf (KeySig r m) = rnf r `seq` rnf m
 
-instance NFData PitchClass where
-  rnf :: PitchClass -> ()
-  rnf _ = ()
+-- instance NFData PitchClass where
+--   rnf :: PitchClass -> ()
+--   rnf _ = ()
 
-instance NFData Mode where
-  rnf :: Mode -> ()
-  rnf _ = ()
+-- instance NFData Mode where
+--   rnf :: Mode -> ()
+--   rnf _ = ()
 
-instance NFData PhraseAttribute where
-  rnf (Dyn d) = rnf d
-  rnf (Tmp t) = rnf t
-  rnf (Art a) = rnf a
-  rnf (Orn o) = rnf o
+-- instance NFData PhraseAttribute where
+--   rnf (Dyn d) = rnf d
+--   rnf (Tmp t) = rnf t
+--   rnf (Art a) = rnf a
+--   rnf (Orn o) = rnf o
 
-instance NFData Dynamic where
-  rnf (Accent r) = rnf r
-  rnf (Crescendo r) = rnf r
-  rnf (Diminuendo r) = rnf r
-  rnf (StdLoudness x) = rnf x
-  rnf (Loudness r) = rnf r
+-- instance NFData Dynamic where
+--   rnf (Accent r) = rnf r
+--   rnf (Crescendo r) = rnf r
+--   rnf (Diminuendo r) = rnf r
+--   rnf (StdLoudness x) = rnf x
+--   rnf (Loudness r) = rnf r
 
-instance NFData StdLoudness where
-  rnf :: StdLoudness -> ()
-  rnf _ = ()
+-- instance NFData StdLoudness where
+--   rnf :: StdLoudness -> ()
+--   rnf _ = ()
 
-instance NFData Articulation where
-  rnf :: Articulation -> ()
-  rnf (Staccato r) = rnf r
-  rnf (Legato r) = rnf r
-  rnf _ = ()
+-- instance NFData Articulation where
+--   rnf :: Articulation -> ()
+--   rnf (Staccato r) = rnf r
+--   rnf (Legato r) = rnf r
+--   rnf _ = ()
 
-instance NFData Ornament where
-  rnf :: Ornament -> ()
-  rnf _ = ()
+-- instance NFData Ornament where
+--   rnf :: Ornament -> ()
+--   rnf _ = ()
 
-instance NFData Tempo where
-  rnf :: Tempo -> ()
-  rnf (Ritardando r) = rnf r
-  rnf (Accelerando r) = rnf r
+-- instance NFData Tempo where
+--   rnf :: Tempo -> ()
+--   rnf (Ritardando r) = rnf r
+--   rnf (Accelerando r) = rnf r
 
-instance NFData InstrumentName where
-  rnf :: InstrumentName -> ()
-  rnf _ = ()
+-- instance NFData InstrumentName where
+--   rnf :: InstrumentName -> ()
+--   rnf _ = ()
 
-instance NFData NoteAttribute where
-  rnf (Volume v) = rnf v
-  rnf (Fingering f) = rnf f
-  rnf (Dynamics d) = rnf d
-  rnf (Params p) = rnf p
+-- instance NFData NoteAttribute where
+--   rnf (Volume v) = rnf v
+--   rnf (Fingering f) = rnf f
+--   rnf (Dynamics d) = rnf d
+--   rnf (Params p) = rnf p

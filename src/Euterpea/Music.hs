@@ -6,14 +6,19 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, BangPatterns #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass, DerivingStrategies #-}
 
 module Euterpea.Music where
 
 import Data.Bifunctor (first)
-import Data.List (uncons)
+import Data.List
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
+import Control.DeepSeq
 
 infixr 5 :+:, :=:
 
@@ -29,20 +34,27 @@ type Dur = Rational
 data PitchClass = Cff | Cf | C | Dff | Cs | Df | Css | D | Eff | Ds | Ef | Fff | Dss
                  | E | Ff | Es | F | Gff | Ess | Fs | Gf | Fss | G | Aff | Gs | Af | Gss 
                  | A | Bff | As | Bf | Ass | B | Bs | Bss 
-  deriving (Show, Eq, Ord, Read, Bounded)
+  deriving stock (Show, Eq, Ord, Read, Bounded)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 {- ORMOLU_ENABLE -}
 
 data Primitive a where
-  Note :: Dur -> a -> Primitive a
-  Rest :: Dur -> Primitive a
-  deriving (Show, Eq, Ord, Functor)
+  Note :: !Dur -> !a -> Primitive a
+  Rest :: !Dur -> Primitive a
+  deriving stock (Show, Eq, Ord, Functor)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Music a where
   Prim :: (Primitive a) -> Music a
   (:+:) :: Music a -> Music a -> Music a
   (:=:) :: Music a -> Music a -> Music a
   Modify :: Control -> (Music a) -> Music a
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
+
 
 instance Functor Music where
   fmap :: (a -> b) -> Music a -> Music b
@@ -58,7 +70,9 @@ data Control where
   Phrase :: [PhraseAttribute] -> Control
   KeySig :: PitchClass -> Mode -> Control
   Custom :: String -> Control
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Mode
   = Ionian
@@ -71,14 +85,20 @@ data Mode
   | Aeolian
   | Locrian
   | CustomMode !String
-  deriving (Show, Eq, Ord, Read)
+  deriving stock (Show, Eq, Ord, Read)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
+
+
 
 data PhraseAttribute
   = Dyn Dynamic
   | Tmp Tempo
   | Art Articulation
   | Orn Ornament
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Dynamic where
   Accent :: Rational -> Dynamic
@@ -86,13 +106,20 @@ data Dynamic where
   Diminuendo :: Rational -> Dynamic
   StdLoudness :: StdLoudness -> Dynamic
   Loudness :: Rational -> Dynamic
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData)
+
 
 data StdLoudness = PPP | PP | P | MP | SF | MF | NF | FF | FFF
   deriving (Show, Eq, Ord, Enum, Bounded, Read)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Tempo = Ritardando Rational | Accelerando Rational
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
+
 
 data Articulation
   = Staccato Rational
@@ -114,7 +141,10 @@ data Articulation
   | Wedge
   | Thumb
   | Stopped
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
+
 
 data Ornament
   = Trill
@@ -130,7 +160,10 @@ data Ornament
   | Instruction String
   | Head NoteHead
   | DiatonicTrans Int
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
+
 
 data NoteHead
   = DiamondHead
@@ -141,7 +174,8 @@ data NoteHead
   | SlashHead
   | ArtHarmonic
   | NoHead
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData)
 
 type Volume = Int
 
@@ -154,9 +188,9 @@ addVolume v = fmap (,v)
 data NoteAttribute
   = Volume {-# UNPACK #-} !Int
   | Fingering {-# UNPACK #-} !Int
-  | Dynamics !String
-  | Params ![Double]
-  deriving (Eq, Show, Generic)
+  | Dynamics String
+  | Params [Double]
+  deriving (Eq, Show, Generic, NFData)
 
 type Note1 = (Pitch, [NoteAttribute])
 
@@ -1052,6 +1086,10 @@ data InstrumentName
   | CustomInstrument String
   deriving (Show, Eq, Ord)
 
+instance NFData InstrumentName where
+    rnf (CustomInstrument s) = rnf s
+    rnf x = x `seq` ()
+
 data PercussionSound
   = AcousticBassDrum --  MIDI Key 35
   | BassDrum1 --  MIDI Key 36
@@ -1095,4 +1133,7 @@ data PercussionSound
   | OpenCuica
   | MuteTriangle
   | OpenTriangle --  MIDI Key 82
-  deriving (Show, Eq, Ord, Enum)
+  deriving (Show, Eq, Ord, Enum, Generic)
+
+instance NFData PercussionSound where
+    rnf x = x `seq` ()
