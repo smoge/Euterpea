@@ -1,26 +1,25 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
 
 module Euterpea.IO.Audio.IO
-  ( outFile,
-    outFileNorm,
-    --    outFileA, outFileNormA, RecordStatus,
-    maxSample,
-  )
-where
+  ( outFile
+  , outFileNorm
+  , --    outFileA, outFileNormA, RecordStatus,
+    maxSample
+  ) where
 
-import Codec.Wav
-import Control.Arrow.ArrowP
-import Control.SF.SF
-import Data.Array.Unboxed
-import Data.Audio
-import Data.Int
-import Euterpea.IO.Audio.Types hiding (Signal)
+import           Codec.Wav
+import           Control.Arrow.ArrowP
+import           Control.SF.SF
+import           Data.Array.Unboxed
+import           Data.Audio
+import           Data.Int
+import           Euterpea.IO.Audio.Types hiding (Signal)
+
 
 -- import Data.IORef
--- import Foreign.C
+-- import Foreign.Cx
 -- import Foreign.Marshal.Array
 -- import Foreign.Marshal.Utils
 -- import Foreign.Ptr
@@ -29,20 +28,22 @@ import Euterpea.IO.Audio.Types hiding (Signal)
 -- import Control.Arrow
 -- import Control.Concurrent.MonadIO
 -- import Sound.RtAudio
-
 type Signal clk a b = ArrowP SF clk a b
+
 
 -- | Writes sound to a wave file (.wav)
 outFile ::
-  forall a p.
-  (AudioSample a, Clock p) =>
+     forall a p.
+     ( AudioSample a
+     , Clock p
+     )
   -- | Filename to write to.
-  String ->
+  => String
   -- | Duration of the wav in seconds.
-  Double ->
+  -> Double
   -- | Signal representing the sound.
-  Signal p () a ->
-  IO ()
+  -> Signal p () a
+  -> IO ()
 outFile = outFileHelp' id
 
 normList :: [Double] -> [Double]
@@ -50,51 +51,52 @@ normList xs = map (/ mx) xs
   where
     mx = max 1.0 (maximum (map abs xs))
 
+
 -- | Like outFile, but normalizes the output if the amplitude of
 -- the signal goes above 1.  If the maximum sample is less than
 -- or equal to 1, the output is not normalized.
 -- Currently this requires storing the entire output stream in memory
 -- before writing to the file.
 outFileNorm ::
-  forall a p.
-  (AudioSample a, Clock p) =>
+     forall a p.
+     ( AudioSample a
+     , Clock p
+     )
   -- | Filename to write to.
-  String ->
+  => String
   -- | Duration of the wav in seconds.
-  Double ->
+  -> Double
   -- | Signal representing the sound.
-  Signal p () a ->
-  IO ()
+  -> Signal p () a
+  -> IO ()
 outFileNorm = outFileHelp' normList
 
 outFileHelp ::
-  forall a p.
-  (AudioSample a, Clock p) =>
+     forall a p.
+     ( AudioSample a
+     , Clock p
+     )
   -- | Post-processing function.
-  ([Double] -> [Double]) ->
+  => ([Double] -> [Double])
   -- | Filename to write to.
-  String ->
+  -> String
   -- | Duration of the wav in seconds.
-  Double ->
+  -> Double
   -- | Signal representing the sound.
-  Signal p () a ->
-  IO ()
+  -> Signal p () a
+  -> IO ()
 outFileHelp f filepath dur sf =
   let sr = rate (undefined :: p)
       numChannels = numChans (undefined :: a)
       numSamples = truncate (dur * sr) * numChannels
-      dat =
-        map
-          (fromSample . (* 0.999))
-          (f (toSamples dur sf)) ::
-          [Int32]
+      dat = map (fromSample . (* 0.999)) (f (toSamples dur sf)) :: [Int32]
       -- multiply by 0.999 to avoid wraparound at 1.0
       array = listArray (0, numSamples - 1) dat
       aud =
         Audio
-          { sampleRate = truncate sr,
-            channelNumber = numChannels,
-            sampleData = array
+          { sampleRate = truncate sr
+          , channelNumber = numChannels
+          , sampleData = array
           }
    in exportFile filepath aud
 
@@ -105,38 +107,37 @@ very hard to debug sound modeling problems that involve certain waveforms,
 such as saw waves. Clipping is also a more common behavior in other audio
 software rather than overflowing or wrap-around.
 -}
-
 outFileHelp' ::
-  forall a p.
-  (AudioSample a, Clock p) =>
+     forall a p.
+     ( AudioSample a
+     , Clock p
+     )
   -- | Post-processing function.
-  ([Double] -> [Double]) ->
+  => ([Double] -> [Double])
   -- | Filename to write to.
-  String ->
+  -> String
   -- | Duration of the wav in seconds.
-  Double ->
+  -> Double
   -- | Signal representing the sound.
-  Signal p () a ->
-  IO ()
+  -> Signal p () a
+  -> IO ()
 outFileHelp' f filepath dur sf =
   let sr = rate (undefined :: p)
       numChannels = numChans (undefined :: a)
       numSamples = truncate (dur * sr) * numChannels
       dat =
-        map
-          (fromSample . (* 0.999) . clipFix)
-          (f (toSamples dur sf)) ::
-          [Int32]
+        map (fromSample . (* 0.999) . clipFix) (f (toSamples dur sf)) :: [Int32]
       array = listArray (0, numSamples - 1) dat
       aud =
         Audio
-          { sampleRate = truncate sr,
-            channelNumber = numChannels,
-            sampleData = array
+          { sampleRate = truncate sr
+          , channelNumber = numChannels
+          , sampleData = array
           }
    in exportFile filepath aud
   where
-    clipFix x = if x > 1.0 then 1.0 else if x < -1.0 then -1.0 else x
+    clipFix x = max (-1.0) (min 1.0 x)
+
 
 {-
 data RecordStatus = Pause | Record | Clear | Write
@@ -183,28 +184,25 @@ writeWav f filepath sr numChannels adat =
                     sampleData    = array }
   in liftIO $ exportFile filepath aud
 -}
-
 toSamples ::
-  forall a p.
-  (AudioSample a, Clock p) =>
-  Double ->
-  Signal p () a ->
-  [Double]
+     forall a p. (AudioSample a, Clock p)
+  => Double
+  -> Signal p () a
+  -> [Double]
 toSamples dur sf =
   let sr = rate (undefined :: p)
       numChannels = numChans (undefined :: a)
       numSamples = truncate (dur * sr) * numChannels
    in take numSamples $ concatMap collapse $ unfold $ strip sf
 
+
 -- | Compute the maximum sample of an SF in the first 'dur' seconds.
 maxSample ::
-  forall a p.
-  (AudioSample a, Clock p) =>
-  Double ->
-  Signal p () a ->
-  Double
+     forall a p. (AudioSample a, Clock p)
+  => Double
+  -> Signal p () a
+  -> Double
 maxSample dur sf = maximum (map abs (toSamples dur sf))
-
 {-
 chunk !nFrames !(i, f) ref buf = nFrames `seq` i `seq` f `seq` aux nFrames i
     where aux !n !i = x `seq` i `seq` i' `seq`

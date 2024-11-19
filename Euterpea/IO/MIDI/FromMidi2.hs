@@ -40,7 +40,7 @@ chunkMel :: [Chunk] -> [Chunk]
 chunkMel [] = []
 chunkMel x@(c : cs) =
   let cMel = buildMelFrom (chunkOnset c) x -- get ALL possible melody elements
-      notInMel = filter (\v -> not $ elem v cMel) x
+      notInMel = filter (`notElem` cMel) x
    in if null cMel
         then c : chunkMel cs
         else Seq cMel : chunkMel notInMel
@@ -56,13 +56,13 @@ chunkSeqs :: [Chunk] -> [Chunk]
 chunkSeqs [] = []
 chunkSeqs x@(c : cs) =
   let s = seqWithRests (chunkOnset c) x
-      notInS = filter (\v -> not $ elem v s) x
+      notInS = filter (`notElem` s) x
    in if s == [c]
         then c : chunkSeqs cs
         else Seq s : chunkSeqs notInS
 
 seqWithRests :: Onset -> [Chunk] -> [Chunk]
-seqWithRests t [] = []
+seqWithRests _ [] = []
 seqWithRests t x@(c : cs) =
   let tc = chunkOnset c
       dt = tc - t
