@@ -26,3 +26,7 @@ format:
     echo "Formating the Haskell project (ormolu)..."
     find ./src -name '*.hs' | xargs ormolu -i
     find ./test -name '*.hs' | xargs ormolu -i
+
+# Bench
+bench:
+    stack bench --flag euterpea:bench 
