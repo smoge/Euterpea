@@ -24,5 +24,5 @@ docs:
 # Format Haskell project with ormolu
 format:
     echo "Formating the Haskell project (ormolu)..."
-    find ./Euterpea -name '*.hs' | xargs ormolu -i
+    find ./src -name '*.hs' | xargs ormolu -i
     find ./test -name '*.hs' | xargs ormolu -i
