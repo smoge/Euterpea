@@ -7,17 +7,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
 
-module Euterpea.MicroMusic
-  ( Accidental(..)
-  , NoteName(..)
-  , PitchClass(..)
-  , Pitch(..)
-  , Octave
-  , makeOctave
-  , getOctave
-  , Rule(..)
-  , OctaveChange(..)
-  ) where
+module Euterpea.MicroMusic where
 
 import Data.Bifunctor (first)
 import Data.List (uncons)
@@ -25,7 +15,7 @@ import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 
-infixr 5 :+:, :=:
+-- infixr 5 :+:, :=:
 
 data Accidental
   = DoubleFlat
@@ -45,15 +35,15 @@ data NoteName = C | D | E | F | G | A | B
 data PitchClass = PitchClass
   { noteName :: NoteName
   , accidental :: Accidental
-  } deriving (Eq, Ord, Show, Enum, Bounded, Read, Generic)
+  } deriving (Eq, Ord, Show, Bounded, Read, Generic)
 
 newtype Octave = Octave { getOctave :: Int }
-  deriving (Eq, Ord, Show, Enum, Read, Generic)
+  deriving (Eq, Ord, Show, Read, Generic)
 
 data Pitch = Pitch
   { pitchClass :: PitchClass
   , octave :: Octave
-  } deriving (Eq, Ord, Show, Enum, Bounded, Read, Generic)
+  } deriving (Eq, Ord, Show, Read, Generic)
 
 makeOctave :: Int -> Octave
 makeOctave = Octave
@@ -65,4 +55,4 @@ data Rule = Rule
   }
 
 data OctaveChange = NoChange | OctaveUp | OctaveDown
-  deriving (Show, E)q
+  deriving (Show, Eq)
