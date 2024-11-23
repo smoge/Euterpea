@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Euterpea.IO.MIDI.Play
   ( play, -- standard playback, allows infinite values
@@ -41,8 +41,11 @@ import Codec.Midi
 import Control.Concurrent (threadDelay)
 import Control.DeepSeq (NFData (..), deepseq)
 import Control.Exception (SomeException, onException, try)
-import Control.Monad (void, when)
+import Control.Monad (unless, void, when)
+import Data.Foldable (toList)
 import Data.List (insertBy)
+import qualified Data.Map.Strict as Map
+import qualified Data.Sequence as Seq
 import Euterpea.IO.MIDI.MEvent
   ( MEvent (eDur, eInst, ePitch, eTime, eVol),
     perform,
@@ -85,7 +88,6 @@ import Sound.PortMidi
     terminate,
   )
 import System.Clock (Clock (Monotonic), getTime, toNanoSecs)
-import qualified Data.Map.Strict as Map
 
 data PlayParams = PlayParams
   { strict :: Bool, -- strict timing (False for infinite values)
@@ -194,27 +196,43 @@ delayUntil targetTime = do
       current <- toNanoSecs <$> getTime Monotonic
       Control.Monad.when (current < target) $ spinWait target
 
-playRec :: (RealFrac a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
+-- Configuration  buffer
+bufferSize :: Integer
+bufferSize = 5000000 -- 5ms
+
+playRec :: forall a. (RealFrac a, Real a, Ord a, Num a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
 playRec _ [] = return ()
 playRec dev messages = do
   startTime <- toNanoSecs <$> getTime Monotonic
-  go startTime messages
+  go startTime Seq.empty messages
   where
-    go _ [] = return ()
-    go baseTime ((t, m) : ms) = do
+    go :: Integer -> Seq.Seq (a, MidiMessage) -> [(a, MidiMessage)] -> IO ()
+    go _ _ [] = return ()
+    go baseTime buffer ((t, m) : ms) = do
+      currentTime <- toNanoSecs <$> getTime Monotonic
+
+      -- Split buffer into ready and waiting events
+      let (ready, waiting) =
+            Seq.spanl
+              ( \(t', _) ->
+                  baseTime + round (realToFrac t' * 1e9) <= currentTime + bufferSize
+              )
+              buffer
+      unless (Seq.null ready) $ do
+        doMidiOut dev (toList ready)
+
       if t > 0
         then do
-          let targetTime = baseTime + round (t * 1e9)
-          delayUntil targetTime
-          -- Process all events that should happen at this time
-          let (now, later) = span (\(dt, _) -> dt <= 0) ms
-          doMidiOut dev ((t, m) : now)
-          go targetTime later
+          let targetTime = baseTime + round (realToFrac t * 1e9)
+          if targetTime <= currentTime + bufferSize
+            then go baseTime (buffer Seq.|> (t, m)) ms
+            else do
+              delayUntil targetTime
+              doMidiOut dev [(t, m)]
+              go targetTime Seq.empty ms
         else do
-          -- Process all immediate events at once
-          let (now, later) = span (\(dt, _) -> dt <= 0) ((t, m) : ms)
-          doMidiOut dev now
-          go baseTime later
+          doMidiOut dev [(t, m)]
+          go baseTime buffer ms
 
 doMidiOut :: OutputDeviceID -> [(a, MidiMessage)] -> IO ()
 doMidiOut dev ms = mapM_ (safeDeliver dev) ms
@@ -246,10 +264,9 @@ musicToMsgs' p m =
       where
         -- Insert events into the map
         insertEvent (t, msg) = Map.insertWith (++) t [msg]
-        
+
         -- Expand (Time, [MidiMessage]) into [(Time, MidiMessage)]
         expand (t, msgs) = [(t, msg) | msg <- msgs]
-    
 
     channelMap :: ChannelMapFun -> ChannelMap -> [MEvent] -> [(Time, MidiMessage)]
     channelMap _ _ [] = []
