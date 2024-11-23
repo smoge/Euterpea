@@ -63,3 +63,6 @@ cabal.project.local~
 # Miscellaneous
 tags
 TAGS
+sketch/RT_FFI_Scheduler.hs
+sketch/RTScheduler.hs
+sketch/cbits/ringbuffer.h
