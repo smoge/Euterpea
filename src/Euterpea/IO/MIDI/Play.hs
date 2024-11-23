@@ -85,6 +85,7 @@ import Sound.PortMidi
     terminate,
   )
 import System.Clock (Clock (Monotonic), getTime, toNanoSecs)
+import qualified Data.Map.Strict as Map
 
 data PlayParams = PlayParams
   { strict :: Bool, -- strict timing (False for infinite values)
@@ -229,22 +230,26 @@ type ChannelMap = [(InstrumentName, Channel)]
 
 type ChannelMapFun = InstrumentName -> ChannelMap -> (Channel, ChannelMap)
 
+type TimeEvent = (Time, MidiMessage)
+
 musicToMsgs' :: (ToMusic1 a, Enum InstrumentName) => PlayParams -> Music a -> [(Time, MidiMessage)]
 musicToMsgs' p m =
   let perf = perfAlg p $ toMusic1 m -- obtain the performance
       evsA = channelMap (chanPolicy p) [] perf -- time-stamped ANote values
-      evs = stdMerge evsA -- merged On/Off events sorted by absolute time
+      evs = stdMergeMap evsA -- merged On/Off events sorted by absolute time
       times = map fst evs -- absolute times in seconds
       newTimes = zipWith subtract (head times : times) times -- relative times
    in zip newTimes (map snd evs)
   where
-    stdMerge :: [(Time, MidiMessage)] -> [(Time, MidiMessage)]
-    stdMerge = foldr insertNoteOff []
+    stdMergeMap :: [TimeEvent] -> [TimeEvent]
+    stdMergeMap = concatMap expand . Map.toList . foldr insertEvent Map.empty
       where
-        insertNoteOff (t, ANote c k v d) acc =
-          (t, Std $ NoteOn c k v) : insertBy compareTime (t + d, Std $ NoteOff c k v) acc
-        insertNoteOff event acc = event : acc
-        compareTime (a, _) (b, _) = compare a b
+        -- Insert events into the map
+        insertEvent (t, msg) = Map.insertWith (++) t [msg]
+        
+        -- Expand (Time, [MidiMessage]) into [(Time, MidiMessage)]
+        expand (t, msgs) = [(t, msg) | msg <- msgs]
+    
 
     channelMap :: ChannelMapFun -> ChannelMap -> [MEvent] -> [(Time, MidiMessage)]
     channelMap _ _ [] = []
