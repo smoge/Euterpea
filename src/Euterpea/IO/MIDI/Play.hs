@@ -41,7 +41,7 @@ import Codec.Midi
 import Control.Concurrent (threadDelay)
 import Control.DeepSeq (NFData (..), deepseq)
 import Control.Exception (onException)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Data.List (insertBy)
 import Euterpea.IO.MIDI.MEvent
   ( MEvent (eDur, eInst, ePitch, eTime, eVol),
@@ -87,11 +87,6 @@ import Sound.PortMidi
 import System.Clock (Clock(Monotonic), getTime, toNanoSecs)
 
 
-delayUntil :: Integer -> IO ()
-delayUntil targetTime = do
-  currentTime <- toNanoSecs <$> getTime Monotonic
-  let delay = max 0 (targetTime - currentTime)
-  threadDelay (fromIntegral (delay `div` 1000))
   
 data PlayParams = PlayParams
   { strict :: Bool, -- strict timing (False for infinite values)
@@ -203,28 +198,75 @@ stopMidiOut dev i =
 --       mapM_ (\(_, m) -> deliverMidiEvent dev (0, m)) ms
 --     toMicroSec x = round (x * 1000000)
 
+-- playRec :: (RealFrac a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
+-- playRec _ [] = return ()
+-- playRec dev ((t, m) : ms) = do
+--   currentTime <- toNanoSecs <$> getTime Monotonic
+--   if t > 0
+--     then do
+--       let targetTime = currentTime + (round $ t * 1e9)  -- Convert seconds to nanoseconds
+--       delayUntil targetTime
+--       playRec dev ((0, m) : ms)
+--     else do
+--       doMidiOut dev (takeWhile ((<= 0) . fst) ((t, m) : ms))
+--       playRec dev (dropWhile ((<= 0) . fst) ms)
+--   where
+--     delayUntil :: Integer -> IO ()
+--     delayUntil targetTime = do
+--       now <- toNanoSecs <$> getTime Monotonic
+--       let delay = max 0 (targetTime - now)
+--       threadDelay (fromIntegral (delay `div` 1000))  -- Convert nanoseconds to microseconds
+    
+--     doMidiOut :: OutputDeviceID -> [(a, MidiMessage)] -> IO ()
+--     doMidiOut dev ms = mapM_ (\(_, msg) -> deliverMidiEvent dev (0, msg)) ms
+
+
+
+-- delayUntil :: Integer -> IO ()
+-- delayUntil targetTime = do
+--   currentTime <- toNanoSecs <$> getTime Monotonic
+--   let delay = max 0 (targetTime - currentTime)
+--   threadDelay (fromIntegral (delay `div` 1000))
+
+delayUntil :: Integer -> IO ()
+delayUntil targetTime = do
+  currentTime <- toNanoSecs <$> getTime Monotonic
+  let delay = max 0 (targetTime - currentTime)
+  if delay < 1000000  -- If delay is less than 1ms
+    then spinWait targetTime  -- Use spin-wait for very short delays
+    else threadDelay (fromIntegral (delay `div` 1000))
+  where
+    spinWait :: Integer -> IO ()
+    spinWait target = do
+      current <- toNanoSecs <$> getTime Monotonic
+      Control.Monad.when (current < target) $ spinWait target
 
 playRec :: (RealFrac a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
 playRec _ [] = return ()
-playRec dev ((t, m) : ms) = do
-  currentTime <- toNanoSecs <$> getTime Monotonic
-  if t > 0
-    then do
-      let targetTime = currentTime + (round $ t * 1e9)  -- Convert seconds to nanoseconds
-      delayUntil targetTime
-      playRec dev ((0, m) : ms)
-    else do
-      doMidiOut dev (takeWhile ((<= 0) . fst) ((t, m) : ms))
-      playRec dev (dropWhile ((<= 0) . fst) ms)
+playRec dev messages = do
+  startTime <- toNanoSecs <$> getTime Monotonic
+  go startTime messages
   where
-    delayUntil :: Integer -> IO ()
-    delayUntil targetTime = do
-      now <- toNanoSecs <$> getTime Monotonic
-      let delay = max 0 (targetTime - now)
-      threadDelay (fromIntegral (delay `div` 1000))  -- Convert nanoseconds to microseconds
-    
+    go _ [] = return ()
+    go baseTime ((t, m) : ms) = do
+      if t > 0
+        then do
+          let targetTime = baseTime + round (t * 1e9)
+          delayUntil targetTime
+          -- Process all events that should happen at this time
+          let (now, later) = span (\(dt, _) -> dt <= 0) ms
+          doMidiOut dev ((t, m) : now)
+          go targetTime later
+        else do
+          -- Process all immediate events at once
+          let (now, later) = span (\(dt, _) -> dt <= 0) ((t, m) : ms)
+          doMidiOut dev now
+          go baseTime later
+
     doMidiOut :: OutputDeviceID -> [(a, MidiMessage)] -> IO ()
-    doMidiOut dev ms = mapM_ (\(_, msg) -> deliverMidiEvent dev (0, msg)) ms
+    doMidiOut dev = mapM_ (\ (_, msg) -> deliverMidiEvent dev (0, msg))
+
+
 
 
 
