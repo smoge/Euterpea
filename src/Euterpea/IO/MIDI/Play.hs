@@ -40,7 +40,7 @@ import Codec.Midi
   )
 import Control.Concurrent (threadDelay)
 import Control.DeepSeq (NFData (..), deepseq)
-import Control.Exception (onException)
+import Control.Exception (SomeException, onException, try)
 import Control.Monad (void, when)
 import Data.List (insertBy)
 import Euterpea.IO.MIDI.MEvent
@@ -84,10 +84,8 @@ import Sound.PortMidi
     initialize,
     terminate,
   )
-import System.Clock (Clock(Monotonic), getTime, toNanoSecs)
+import System.Clock (Clock (Monotonic), getTime, toNanoSecs)
 
-
-  
 data PlayParams = PlayParams
   { strict :: Bool, -- strict timing (False for infinite values)
     chanPolicy :: ChannelMapFun, -- channel assignment policy
@@ -182,58 +180,12 @@ stopMidiOut dev i =
       deliverMidiEvent dev (0, Std $ ControlChange i 123 0)
       stopMidiOut dev (i - 1)
 
--- playRec :: (RealFrac a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
--- playRec _ [] = return ()
--- playRec dev (x@(t, m) : ms) =
---   if t > 0
---     then threadDelay (toMicroSec t) >> playRec dev ((0, m) : ms)
---     else
---       let mNow = x : takeWhile ((<= 0) . fst) ms
---           mLater = drop (length mNow - 1) ms
---        in doMidiOut dev (Just mNow) >> playRec dev mLater
---   where
---     doMidiOut dev Nothing = outputMidi dev
---     doMidiOut dev (Just ms) = do
---       outputMidi dev
---       mapM_ (\(_, m) -> deliverMidiEvent dev (0, m)) ms
---     toMicroSec x = round (x * 1000000)
-
--- playRec :: (RealFrac a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
--- playRec _ [] = return ()
--- playRec dev ((t, m) : ms) = do
---   currentTime <- toNanoSecs <$> getTime Monotonic
---   if t > 0
---     then do
---       let targetTime = currentTime + (round $ t * 1e9)  -- Convert seconds to nanoseconds
---       delayUntil targetTime
---       playRec dev ((0, m) : ms)
---     else do
---       doMidiOut dev (takeWhile ((<= 0) . fst) ((t, m) : ms))
---       playRec dev (dropWhile ((<= 0) . fst) ms)
---   where
---     delayUntil :: Integer -> IO ()
---     delayUntil targetTime = do
---       now <- toNanoSecs <$> getTime Monotonic
---       let delay = max 0 (targetTime - now)
---       threadDelay (fromIntegral (delay `div` 1000))  -- Convert nanoseconds to microseconds
-    
---     doMidiOut :: OutputDeviceID -> [(a, MidiMessage)] -> IO ()
---     doMidiOut dev ms = mapM_ (\(_, msg) -> deliverMidiEvent dev (0, msg)) ms
-
-
-
--- delayUntil :: Integer -> IO ()
--- delayUntil targetTime = do
---   currentTime <- toNanoSecs <$> getTime Monotonic
---   let delay = max 0 (targetTime - currentTime)
---   threadDelay (fromIntegral (delay `div` 1000))
-
 delayUntil :: Integer -> IO ()
 delayUntil targetTime = do
   currentTime <- toNanoSecs <$> getTime Monotonic
   let delay = max 0 (targetTime - currentTime)
-  if delay < 1000000  -- If delay is less than 1ms
-    then spinWait targetTime  -- Use spin-wait for very short delays
+  if delay < 1000000 -- If delay is less than 1ms
+    then spinWait targetTime -- Use spin-wait for very short delays
     else threadDelay (fromIntegral (delay `div` 1000))
   where
     spinWait :: Integer -> IO ()
@@ -263,12 +215,15 @@ playRec dev messages = do
           doMidiOut dev now
           go baseTime later
 
-    doMidiOut :: OutputDeviceID -> [(a, MidiMessage)] -> IO ()
-    doMidiOut dev = mapM_ (\ (_, msg) -> deliverMidiEvent dev (0, msg))
+doMidiOut :: OutputDeviceID -> [(a, MidiMessage)] -> IO ()
+doMidiOut dev ms = mapM_ (safeDeliver dev) ms
 
-
-
-
+safeDeliver :: OutputDeviceID -> (a, MidiMessage) -> IO ()
+safeDeliver dev (_, msg) = do
+  result <- try (deliverMidiEvent dev (0, msg)) :: IO (Either SomeException ())
+  case result of
+    Left ex -> putStrLn $ "Error delivering MIDI message: " ++ show ex
+    Right () -> return ()
 
 type ChannelMap = [(InstrumentName, Channel)]
 
