@@ -196,9 +196,21 @@ delayUntil targetTime = do
       current <- toNanoSecs <$> getTime Monotonic
       Control.Monad.when (current < target) $ spinWait target
 
--- Configuration  buffer
-bufferSize :: Integer
-bufferSize = 5000000 -- 5ms
+
+--  timing configuration
+data TimingConfig = TimingConfig
+  { bufferSize :: Integer    -- 5ms default
+  , spinThreshold :: Integer -- 1ms default
+  , batchSize :: Int         -- Maximum events to process at once
+  }
+
+defaultTiming :: TimingConfig
+defaultTiming = TimingConfig
+  { bufferSize = 5000000    -- 5ms
+  , spinThreshold = 1000000 -- 1ms
+  , batchSize = 32          -- Process up to 32 events at once
+  }
+
 
 playRec :: forall a. (RealFrac a, Real a, Ord a, Num a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
 playRec _ [] = return ()
@@ -211,20 +223,26 @@ playRec dev messages = do
     go baseTime buffer ((t, m) : ms) = do
       currentTime <- toNanoSecs <$> getTime Monotonic
 
-      -- Split buffer into ready and waiting events
+      -- Process ready events in batches
       let (ready, waiting) =
             Seq.spanl
               ( \(t', _) ->
-                  baseTime + round (realToFrac t' * 1e9) <= currentTime + bufferSize
+                  baseTime + round (realToFrac t' * 1e9) <= currentTime + bufferSize defaultTiming
               )
               buffer
+
+      -- Process events in fixed-size batches
       unless (Seq.null ready) $ do
-        doMidiOut dev (toList ready)
+        let (batch, remaining) = Seq.splitAt (batchSize defaultTiming) ready
+        doMidiOut dev (toList batch)
+        -- Recursively process remaining events
+        unless (Seq.null remaining) $
+          go baseTime remaining ms
 
       if t > 0
         then do
           let targetTime = baseTime + round (realToFrac t * 1e9)
-          if targetTime <= currentTime + bufferSize
+          if targetTime <= currentTime + bufferSize defaultTiming
             then go baseTime (buffer Seq.|> (t, m)) ms
             else do
               delayUntil targetTime
