@@ -84,7 +84,15 @@ import Sound.PortMidi
     initialize,
     terminate,
   )
+import System.Clock (Clock(Monotonic), getTime, toNanoSecs)
 
+
+delayUntil :: Integer -> IO ()
+delayUntil targetTime = do
+  currentTime <- toNanoSecs <$> getTime Monotonic
+  let delay = max 0 (targetTime - currentTime)
+  threadDelay (fromIntegral (delay `div` 1000))
+  
 data PlayParams = PlayParams
   { strict :: Bool, -- strict timing (False for infinite values)
     chanPolicy :: ChannelMapFun, -- channel assignment policy
@@ -179,21 +187,46 @@ stopMidiOut dev i =
       deliverMidiEvent dev (0, Std $ ControlChange i 123 0)
       stopMidiOut dev (i - 1)
 
+-- playRec :: (RealFrac a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
+-- playRec _ [] = return ()
+-- playRec dev (x@(t, m) : ms) =
+--   if t > 0
+--     then threadDelay (toMicroSec t) >> playRec dev ((0, m) : ms)
+--     else
+--       let mNow = x : takeWhile ((<= 0) . fst) ms
+--           mLater = drop (length mNow - 1) ms
+--        in doMidiOut dev (Just mNow) >> playRec dev mLater
+--   where
+--     doMidiOut dev Nothing = outputMidi dev
+--     doMidiOut dev (Just ms) = do
+--       outputMidi dev
+--       mapM_ (\(_, m) -> deliverMidiEvent dev (0, m)) ms
+--     toMicroSec x = round (x * 1000000)
+
+
 playRec :: (RealFrac a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
 playRec _ [] = return ()
-playRec dev (x@(t, m) : ms) =
+playRec dev ((t, m) : ms) = do
+  currentTime <- toNanoSecs <$> getTime Monotonic
   if t > 0
-    then threadDelay (toMicroSec t) >> playRec dev ((0, m) : ms)
-    else
-      let mNow = x : takeWhile ((<= 0) . fst) ms
-          mLater = drop (length mNow - 1) ms
-       in doMidiOut dev (Just mNow) >> playRec dev mLater
+    then do
+      let targetTime = currentTime + (round $ t * 1e9)  -- Convert seconds to nanoseconds
+      delayUntil targetTime
+      playRec dev ((0, m) : ms)
+    else do
+      doMidiOut dev (takeWhile ((<= 0) . fst) ((t, m) : ms))
+      playRec dev (dropWhile ((<= 0) . fst) ms)
   where
-    doMidiOut dev Nothing = outputMidi dev
-    doMidiOut dev (Just ms) = do
-      outputMidi dev
-      mapM_ (\(_, m) -> deliverMidiEvent dev (0, m)) ms
-    toMicroSec x = round (x * 1000000)
+    delayUntil :: Integer -> IO ()
+    delayUntil targetTime = do
+      now <- toNanoSecs <$> getTime Monotonic
+      let delay = max 0 (targetTime - now)
+      threadDelay (fromIntegral (delay `div` 1000))  -- Convert nanoseconds to microseconds
+    
+    doMidiOut :: OutputDeviceID -> [(a, MidiMessage)] -> IO ()
+    doMidiOut dev ms = mapM_ (\(_, msg) -> deliverMidiEvent dev (0, msg)) ms
+
+
 
 type ChannelMap = [(InstrumentName, Channel)]
 

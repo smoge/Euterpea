@@ -64,6 +64,7 @@ library
     , arrows
     , base
     , bytestring
+    , clock
     , concurrency
     , containers
     , deepseq

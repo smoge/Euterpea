@@ -59,7 +59,8 @@ library:
     - heap
     - vector
     - concurrency
-
+    - clock
+    
 tests:
   spec:
     main: Spec.hs
