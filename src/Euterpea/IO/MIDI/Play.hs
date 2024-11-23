@@ -238,14 +238,14 @@ musicToMsgs' p m =
       newTimes = zipWith subtract (head times : times) times -- relative times
    in zip newTimes (map snd evs)
   where
-    -- stdMerge: converts ANotes into a sorted list of On/Off events
     stdMerge :: [(Time, MidiMessage)] -> [(Time, MidiMessage)]
-    stdMerge [] = []
-    stdMerge ((t, ANote c k v d) : es) =
-      (t, Std $ NoteOn c k v)
-        : stdMerge (insertBy (\(a, _) (x, _) -> compare a x) (t + d, Std $ NoteOff c k v) es)
-    stdMerge (e1 : es) = e1 : stdMerge es
-    -- channelMap: performs instrument assignment for a list of Events
+    stdMerge = foldr insertNoteOff []
+      where
+        insertNoteOff (t, ANote c k v d) acc =
+          (t, Std $ NoteOn c k v) : insertBy compareTime (t + d, Std $ NoteOff c k v) acc
+        insertNoteOff event acc = event : acc
+        compareTime (a, _) (b, _) = compare a b
+
     channelMap :: ChannelMapFun -> ChannelMap -> [MEvent] -> [(Time, MidiMessage)]
     channelMap _ _ [] = []
     channelMap cf cMap (e : es) =
