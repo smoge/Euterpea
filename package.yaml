@@ -20,8 +20,8 @@ ghc-options:
  - -Wmissing-home-modules
  - -Wpartial-fields
  - -Wredundant-constraints
- - -ddump-to-file
- - -ddump-simpl
+#  - -ddump-to-file
+#  - -ddump-simpl
 
 library:
   source-dirs: ./src
@@ -29,6 +29,7 @@ library:
     - Euterpea
     - Euterpea.Music
     - Control.Arrow.ArrowP
+    - Control.Arrow.Utils
     - Control.SF.SF
     - Euterpea.IO.Audio.Basics
     - Euterpea.IO.Audio.BasicSigFuns
@@ -56,11 +57,18 @@ library:
     - PortMidi
     - HCodecs
     - stm
+    - mtl
     - containers
     - bytestring
     - heap
     - vector
     - concurrency
+    - portaudio
+    - process
+    - vector
+    - data-default
+    - vector-sized
+
 
 tests:
   spec:

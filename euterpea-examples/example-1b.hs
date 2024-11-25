@@ -53,11 +53,11 @@ data PitchOperation = MinPitch | MaxPitch
 getPitchFromSpace :: PitchOperation -> PitchSpace -> AbsPitch
 getPitchFromSpace op space = case (op, space) of
   (_, []) -> error "Empty pitch space"
-  (MinPitch, xs) -> head $ sort xs
-  (MaxPitch, xs) -> last $ sort xs
+  (MinPitch, xs) -> minimum xs
+  (MaxPitch, xs) -> maximum xs
 
 addPairs :: [(Int, Int)] -> [Int]
 addPairs = fmap (uncurry (+))
 
 mkScale :: Pitch -> ScaleSteps -> PitchSpace
-mkScale root steps = scanl (+) (absPitch root) steps
+mkScale root = scanl (+) $ absPitch root

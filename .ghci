@@ -1,4 +1,3 @@
 :set +m
 :set -XOverloadedStrings
-:set -XArrows
 :set prompt ">"

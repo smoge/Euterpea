@@ -28,15 +28,14 @@ import           Euterpea.IO.Audio.Types hiding (Signal)
 -- import Control.Arrow
 -- import Control.Concurrent.MonadIO
 -- import Sound.RtAudio
+
+
+-- | Type synonym for a signal function with an audio clock.
 type Signal clk a b = ArrowP SF clk a b
 
 
 -- | Writes sound to a wave file (.wav)
-outFile ::
-     forall a p.
-     ( AudioSample a
-     , Clock p
-     )
+outFile :: forall a p. ( AudioSample a, Clock p)
   -- | Filename to write to.
   => String
   -- | Duration of the wav in seconds.
@@ -203,6 +202,8 @@ maxSample ::
   -> Signal p () a
   -> Double
 maxSample dur sf = maximum (map abs (toSamples dur sf))
+
+
 {-
 chunk !nFrames !(i, f) ref buf = nFrames `seq` i `seq` f `seq` aux nFrames i
     where aux !n !i = x `seq` i `seq` i' `seq`

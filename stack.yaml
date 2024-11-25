@@ -1,12 +1,13 @@
 
-#resolver: lts-21.25
+#resolver: lts-21.52
 #resolver: nightly-2024-11-12
-resolver: nightly-2024-11-19
+resolver: nightly-2024-11-24
 
 packages:
 - .
 
 extra-deps:
  - PortMidi-0.2.0.0@sha256:0671e36ec72e95138bf396234b205864a8a6d0ee353e09e01cbfd57004c56f40,2383
-
+ - portaudio-0.2.4@sha256:f16a1102187ecc3f08a7510eda5b3081a8a21f2c49d7b4ab5e3cfa8666a81d63,959
+ 
 notify-if-nix-on-path: false 
