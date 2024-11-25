@@ -63,3 +63,15 @@ cabal.project.local~
 # Miscellaneous
 tags
 TAGS
+wind.wav
+*.wav
+*.wave
+extern/
+sketch/
+euterpea-examples/wind4
+euterpea-examples/wind2
+euterpea-examples/wind3
+euterpea-examples/wind
+euterpea-examples/signal-bell
+build.log
+Scheduler/

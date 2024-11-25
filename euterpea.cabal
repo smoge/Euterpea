@@ -32,6 +32,7 @@ library
       Euterpea
       Euterpea.Music
       Control.Arrow.ArrowP
+      Control.Arrow.Utils
       Control.SF.SF
       Euterpea.IO.Audio.Basics
       Euterpea.IO.Audio.BasicSigFuns
@@ -51,7 +52,6 @@ library
       Euterpea.IO.MIDI.ExportMidiFile
       Euterpea.IO.MIDI
   other-modules:
-      Control.Arrow.Utils
       Paths_euterpea
   autogen-modules:
       Paths_euterpea
