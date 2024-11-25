@@ -23,10 +23,19 @@ docs:
 
 # Format Haskell project with ormolu
 format:
-    echo "Formating the Haskell project (ormolu)..."
+    echo "Formating the Haskell project."
     find ./src -name '*.hs' | xargs ormolu -i
     find ./test -name '*.hs' | xargs ormolu -i
+    find ./bench -name '*.hs' | xargs ormolu -i
+
+# Format Haskell project with formolu
+format-with-fourmollu:
+    echo "Formating the Haskell project."
+    find ./src -name '*.hs' | xargs fourmolu -i
+    find ./test -name '*.hs' | xargs fourmolu -i
+    find ./bench -name '*.hs' | xargs fourmolu -i
+
 
 # Bench
 bench:
-    stack bench --flag euterpea:bench 
+    stack bench --flag euterpea:bench

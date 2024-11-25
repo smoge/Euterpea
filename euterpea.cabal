@@ -71,7 +71,6 @@ library
     , deepseq
     , heap
     , mtl
-    , portaudio
     , process
     , random
     , stm

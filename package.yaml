@@ -63,7 +63,6 @@ library:
     - heap
     - vector
     - concurrency
-    - portaudio
     - process
     - vector
     - data-default
