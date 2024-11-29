@@ -11,18 +11,19 @@ module Euterpea.IO.Audio.Basics (
     upsample,
     pchToHz,
     apToHz,
+    hertz,
+    fromFrequency,
+    calculateWaveLength,
 )
 where
 
-import Control.Arrow (Arrow (arr), ArrowChoice)
-import Control.Arrow.ArrowP (ArrowP (..))
-import Control.Arrow.Operations (ArrowCircuit (..))
-import Euterpea.IO.Audio.Types (AudioSample (zero), Clock (..))
+import Control.Arrow 
+import Control.Arrow.ArrowP
+import Control.Arrow.Operations 
+import Euterpea.IO.Audio.Types 
 import Euterpea.Music
 
 
-newtype Frequency = Frequency {getFrequency :: Double}
-    deriving (Show, Eq, Ord)
 
 
 -- | Identity arrow that passes its input unchanged
@@ -45,7 +46,7 @@ integral = proc x -> do
         i <- delay 0 -< i'
     outA -< i
   where
-    samplingPeriod = 1 / rate (undefined :: p)
+    samplingPeriod = recip . rate $ (undefined :: p)
 
 
 {- | Creates a countdown arrow starting from the given value.
@@ -91,11 +92,11 @@ upsample ::
     (ArrowChoice a, ArrowCircuit a, Clock p1, Clock p2, AudioSample c) =>
     ArrowP a p1 b c ->
     ArrowP a p2 b c
-upsample f = proc x -> do
+upsample this_f = proc x -> do
     rec cc <- delay 0 -< if cc >= conversionRatio - 1 then 0 else cc + 1
         y <-
             if cc == 0
-                then ArrowP (strip f) -< x
+                then ArrowP (strip this_f) -< x
                 else delay zero -< y
     outA -< y
   where
@@ -129,3 +130,14 @@ apToHz ap = Frequency $ 440 * 2 ** (fromIntegral (ap - absPitch (A, 4)) / 12)
 -}
 pchToHz :: Pitch -> Frequency
 pchToHz = apToHz . absPitch
+
+
+hertz :: Double -> Frequency
+hertz = Frequency
+
+fromFrequency :: Frequency -> Double
+fromFrequency (Frequency this_f) = this_f
+
+calculateWaveLength :: Frequency -> Double -> Double
+calculateWaveLength (Frequency freq) speedOfSound =
+  speedOfSound / freq
