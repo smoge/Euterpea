@@ -68,6 +68,7 @@ wind.wav
 *.wave
 extern/
 sketch/
+euterpea-examples/output/
 euterpea-examples/wind4
 euterpea-examples/wind2
 euterpea-examples/wind3
