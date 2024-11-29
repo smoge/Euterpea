@@ -19,7 +19,7 @@ import Control.Arrow.ArrowP
 import Control.Arrow.Operations
 import Control.SF.SF
 import qualified Data.IntMap as M
-import Data.List
+import Data.List (foldl', sortBy)
 import Data.Ord (comparing)
 import Euterpea.IO.Audio.Basics
 import Euterpea.IO.Audio.Types
@@ -38,10 +38,8 @@ lookupInstr ins im =
   case lookup ins im of
     Just i -> i
     Nothing ->
-      error $
-        "Instrument "
-          ++ show ins
-          ++ " does not have a matching Instr in the supplied InstrMap."
+      error ("Instrument " <> (show ins
+          <> " does not have a matching Instr in the supplied InstrMap."))
 
 -- Each note in a Performance is tagged with a unique NoteId, which
 -- helps us keep track of the signal function associated with a note.
@@ -86,11 +84,19 @@ toEvtSF pf imap =
 -- Modify the collection upon receiving NoteEvts.  The timestamps
 -- are not used here, but they are expected to be the same.
 
+-- modSF :: M.IntMap a -> [Evt a] -> M.IntMap a
+-- modSF = foldl' mod
+--   where
+--     mod m (_, NoteOn nid sf) = M.insert nid sf m
+--     mod m (_, NoteOff nid) = M.delete nid m
+
 modSF :: M.IntMap a -> [Evt a] -> M.IntMap a
 modSF = foldl' mod
   where
     mod m (_, NoteOn nid sf) = M.insert nid sf m
     mod m (_, NoteOff nid) = M.delete nid m
+    mod m _ = m  -- Default case to handle any other patterns
+
 
 -- Simplified version of a parallel switcher.
 -- Note that this is tied to the particular implementation of SF, as it
