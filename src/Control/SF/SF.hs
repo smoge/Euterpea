@@ -12,7 +12,6 @@ import Control.Arrow (
     Arrow (arr, first, (&&&), (***)),
     ArrowChoice (left),
     ArrowLoop (..),
-    (>>>),
  )
 import Control.Arrow.ArrowP ()
 import Control.Arrow.Operations (ArrowCircuit (..))
@@ -22,7 +21,7 @@ import Prelude hiding (id, (.))
 {- | SF represents a signal function that takes an input of type a and produces
 an output of type b along with a new signal function for subsequent inputs.
 -}
-newtype SF a b = SF {runSF :: (a -> (b, SF a b))}
+newtype SF a b = SF {runSF :: a -> (b, SF a b)}
 
 {- | Category Instance
 
