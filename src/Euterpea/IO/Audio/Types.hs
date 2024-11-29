@@ -1,4 +1,3 @@
--- Added for explicit deriving strategy
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}

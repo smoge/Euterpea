@@ -3,10 +3,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Euterpea.IO.Audio.IO (
+    -- * File Output
     outFile,
     outFileNorm,
-    --    outFileA, outFileNormA, RecordStatus,
+    -- * Analysis
     maxSample,
+    -- * Helper Functions
     outFileHelp,
 ) where
 
@@ -15,270 +17,126 @@ import Control.Arrow.ArrowP
 import Control.SF.SF
 import Data.Array.Unboxed
 import Data.Audio
-import Data.Foldable (toList)
 import Data.Int
 import Data.List (foldl')
-import Data.List.NonEmpty (NonEmpty (..), nonEmpty)
+import Data.List.NonEmpty (nonEmpty, toList)
 import Data.Maybe (fromMaybe)
 import Euterpea.IO.Audio.Types hiding (Signal)
-
--- import Data.IORef
--- import Foreign.Cx
--- import Foreign.Marshal.Array
--- import Foreign.Marshal.Utils
--- import Foreign.Ptr
--- import Foreign.Storable
--- import Control.CCA.Types
--- import Control.Arrow
--- import Control.Concurrent.MonadIO
--- import Sound.RtAudio
 
 -- | Type synonym for a signal function with an audio clock.
 type Signal clk a b = ArrowP SF clk a b
 
--- | Writes sound to a wave file (.wav)
+-- | Write audio data to a WAV file without normalization
 outFile ::
     forall a p.
     (AudioSample a, Clock p) =>
-    -- | Filename to write to.
-    String ->
-    -- | Duration of the wav in seconds.
-    Double ->
-    -- | Signal representing the sound.
-    Signal p () a ->
+    FilePath ->    -- ^ Output file path
+    Double ->      -- ^ Duration in seconds
+    Signal p () a -> -- ^ Audio signal
     IO ()
 outFile = outFileHelp' id
 
--- normList :: [Double] -> [Double]
--- normList xs = fmap (/ mx) xs
---   where
---     mx = max 1.0 (maximum (map abs xs))
-
+-- | Normalize a list of audio samples to have maximum amplitude of 1.0
 normList :: [Double] -> [Double]
-normList xs = fmap (/ mx) xs
+normList xs = fmap (/ maxAmp) xs
   where
-    mx = max 1.0 $ fromMaybe 0.0 (safeMaximum (map abs xs))
+    maxAmp = max 1.0 $ fromMaybe 0.0 (safeMaximum (map abs xs))
 
--- safeMaximum :: [Double] -> Maybe Double
--- safeMaximum [] = Nothing
--- safeMaximum ys = Just (foldl' max (head ys) (tail ys))
-
--- A safer version of maximum
+-- | Safe maximum function that handles empty lists
 safeMaximum :: [Double] -> Maybe Double
 safeMaximum [] = Nothing
-safeMaximum (x : xs) = Just (foldl' max x xs)
+safeMaximum (x:xs) = Just (foldl' max x xs)
 
-{- | Like outFile, but normalizes the output if the amplitude of
-the signal goes above 1.  If the maximum sample is less than
-or equal to 1, the output is not normalized.
-Currently this requires storing the entire output stream in memory
-before writing to the file.
+{- | Write audio data to a WAV file with automatic normalization.
+     If the maximum amplitude exceeds 1.0, the signal is normalized.
+     Otherwise, the signal is unchanged.
 -}
 outFileNorm ::
     forall a p.
-    ( AudioSample a
-    , Clock p
-    ) =>
-    -- | Filename to write to.
-    String ->
-    -- | Duration of the wav in seconds.
-    Double ->
-    -- | Signal representing the sound.
-    Signal p () a ->
+    (AudioSample a, Clock p) =>
+    FilePath ->    -- ^ Output file path
+    Double ->      -- ^ Duration in seconds
+    Signal p () a -> -- ^ Audio signal
     IO ()
 outFileNorm = outFileHelp' normList
 
+-- | Helper function for writing audio data with custom post-processing
 outFileHelp ::
     forall a p.
-    ( AudioSample a
-    , Clock p
-    ) =>
-    -- | Post-processing function.
-    ([Double] -> [Double]) ->
-    -- | Filename to write to.
-    String ->
-    -- | Duration of the wav in seconds.
-    Double ->
-    -- | Signal representing the sound.
-    Signal p () a ->
+    (AudioSample a, Clock p) =>
+    ([Double] -> [Double]) -> -- ^ Post-processing function
+    FilePath ->              -- ^ Output file path
+    Double ->                -- ^ Duration in seconds
+    Signal p () a ->        -- ^ Audio signal
     IO ()
-outFileHelp f filepath dur sf =
+outFileHelp f filepath dur sf = do
     let sr = rate (undefined :: p)
         numChannels = numChans (undefined :: a)
         numSamples = truncate (dur * sr) * numChannels
-        dat = fmap (fromSample . (* 0.999)) (f (toSamples dur sf)) :: [Int32]
-        -- multiply by 0.999 to avoid wraparound at 1.0
-        my_array = listArray (0, numSamples - 1) dat
-        aud =
-            Audio
-                { sampleRate = truncate sr
-                , channelNumber = numChannels
-                , sampleData = my_array
-                }
-     in exportFile filepath aud
+        -- Apply post-processing and convert to Int32 samples
+        samples = toSamples dur sf
+        processedSamples = f samples
+        -- Prevent clipping by scaling slightly below maximum
+        dat = fmap (fromSample . (* 0.999)) processedSamples :: [Int32]
+        audioData = listArray (0, numSamples - 1) dat
+        audioFile = Audio
+            { sampleRate = truncate sr
+            , channelNumber = numChannels
+            , sampleData = audioData
+            }
+    exportFile filepath audioFile
 
-{-
-Alternative definition of the above that enforces a clipping behavior when
-the value exceeds the [-1.0, 1.0] range. The overflow behavior makes it
-very hard to debug sound modeling problems that involve certain waveforms,
-such as saw waves. Clipping is also a more common behavior in other audio
-software rather than overflowing or wrap-around.
--}
+-- | Helper function for writing audio data with clipping protection
 outFileHelp' ::
     forall a p.
-    ( AudioSample a
-    , Clock p
-    ) =>
-    -- | Post-processing function.
-    ([Double] -> [Double]) ->
-    -- | Filename to write to.
-    String ->
-    -- | Duration of the wav in seconds.
-    Double ->
-    -- | Signal representing the sound.
-    Signal p () a ->
+    (AudioSample a, Clock p) =>
+    ([Double] -> [Double]) -> -- ^ Post-processing function
+    FilePath ->              -- ^ Output file path
+    Double ->                -- ^ Duration in seconds
+    Signal p () a ->        -- ^ Audio signal
     IO ()
-outFileHelp' f filepath dur sf =
+outFileHelp' f filepath dur sf = do
     let sr = rate (undefined :: p)
         numChannels = numChans (undefined :: a)
         numSamples = truncate (dur * sr) * numChannels
-        dat =
-            fmap (fromSample . (* 0.999) . clipFix) (f (toSamples dur sf)) :: [Int32]
-        my_array = listArray (0, numSamples - 1) dat
-        aud =
-            Audio
-                { sampleRate = truncate sr
-                , channelNumber = numChannels
-                , sampleData = my_array
-                }
-     in exportFile filepath aud
+        -- Process and clip samples
+        samples = toSamples dur sf
+        processedSamples = f samples
+        -- Apply clipping and scaling
+        dat = fmap (fromSample . (* 0.999) . clipSample) processedSamples :: [Int32]
+        audioData = listArray (0, numSamples - 1) dat
+        audioFile = Audio
+            { sampleRate = truncate sr
+            , channelNumber = numChannels
+            , sampleData = audioData
+            }
+    exportFile filepath audioFile
   where
-    clipFix x = max (-1.0) (min 1.0 x)
+    clipSample :: Double -> Double
+    clipSample x = max (-1.0) (min 1.0 x)
 
-{-
-data RecordStatus = Pause | Record | Clear | Write
-
-outFileA :: forall a. AudioSample a =>
-            String               -- ^ Filename to write to.
-         -> Double               -- ^ Sample rate of the incoming signal.
-         -> UISF (a, RecordStatus) ()
-outFileA = outFileHelpA id
-
-outFileNormA :: forall a. AudioSample a =>
-                String               -- ^ Filename to write to.
-             -> Double               -- ^ Sample rate of the incoming signal.
-             -> UISF (a, RecordStatus) ()
-outFileNormA = outFileHelpA normList
-
-outFileHelpA :: forall a. AudioSample a =>
-             ([Double] -> [Double]) -- ^ Post-processing function.
-          -> String                 -- ^ Filename to write to.
-          -> Double                 -- ^ Sample rate of the incoming signal.
-          -> UISF (a, RecordStatus) ()
-outFileHelpA f filepath sr =
-  let numChannels = numChans (undefined :: a)
-      writeWavSink = sink (writeWav f filepath sr numChannels)
-  in proc (a, rs) -> do
-        rec dat <- delay [] -< dat'
-            dat' <- case rs of
-                        Pause  -> returnA -< dat
-                        Record -> returnA -< a:dat
-                        Clear  -> returnA -< []
-                        Write  -> do writeWavSink -< dat
-                                     returnA -< a:dat
-        returnA -< ()
--}
-{-
-writeWav :: AudioSample a => ([Double] -> [Double]) -> String -> Double -> Int -> [a] -> UI ()
-writeWav f filepath sr numChannels adat =
-  let dat         = map (fromSample . (*0.999))
-                        (f (concatMap collapse adat)) :: [Int32]
-                    -- multiply by 0.999 to avoid wraparound at 1.0
-      array       = listArray (0, (length dat)-1) dat
-      aud = Audio { sampleRate    = truncate sr,
-                    channelNumber = numChannels,
-                    sampleData    = array }
-  in liftIO $ exportFile filepath aud
--}
-
+-- | Convert a signal to a list of samples
 toSamples ::
     forall a p.
     (AudioSample a, Clock p) =>
-    Double ->
-    Signal p () a ->
+    Double ->      -- ^ Duration in seconds
+    Signal p () a -> -- ^ Audio signal
     [Double]
 toSamples dur sf =
     let sr = rate (undefined :: p)
         numChannels = numChans (undefined :: a)
         numSamples = truncate (dur * sr) * numChannels
-     in take numSamples $ concatMap collapse $ unfold $ strip sf
+    in take numSamples $ concatMap collapse $ unfold $ strip sf
 
-{- | Compute the maximum sample of an SF in the first 'dur' seconds.
+-- | Compute the maximum absolute sample value in the signal
 maxSample ::
     forall a p.
     (AudioSample a, Clock p) =>
-    Double ->
-    Signal p () a ->
-    Double
---maxSample dur sf = maximum (fmap abs (toSamples dur sf))
-maxSample dur sf =
-  case nonEmpty (fmap abs (toSamples dur sf)) of
-    Nothing -> error "Empty sample list" -- Handle the empty list case appropriately
-    Just neList -> maximum (toList neList)
--}
-
--- Assuming AudioSample and Clock are defined elsewhere
-
-maxSample ::
-    forall a p.
-    (AudioSample a, Clock p) =>
-    Double ->
-    Signal p () a ->
+    Double ->      -- ^ Duration in seconds
+    Signal p () a -> -- ^ Audio signal
     Double
 maxSample dur sf =
     let samples = fmap abs (toSamples dur sf)
-     in case nonEmpty samples of
-            Nothing -> handleEmptyCase -- Reference to a function handling the empty case safely
+    in case nonEmpty samples of
+            Nothing -> 0.0  -- Return 0.0 for empty signals
             Just neList -> maximum (toList neList)
-
--- Function to handle the empty sample list case
-handleEmptyCase :: Double
-handleEmptyCase = 0.0
-
-{-
-chunk !nFrames !(i, f) ref buf = nFrames `seq` i `seq` f `seq` aux nFrames i
-    where aux !n !i = x `seq` i `seq` i' `seq`
-                       if n == 0 then do
-                                  writeIORef ref i
-                                  return ()
-                       else do
-                        pokeElemOff buf (fromIntegral nFrames-n) (realToFrac x)
-                        aux (n-1) i'
-              where (x, i') = f ((), i)
-{-# INLINE [0] chunk #-}
-
-chunkify !i !f !secs = do
-  --userData <- new i
-  ref <- newIORef i
-  let cb :: RtAudioCallback
-      cb oBuf iBuf nFrames nSecs status userData = do
-
-                      lastState <- readIORef ref
-                      -- Fill output buffer with nFrames of samples
-                      chunk (fromIntegral nFrames) (lastState,f) ref oBuf
-                      if secs < (realToFrac nSecs) then return 2 else return 0
-
-  mkAudioCallback cb
-
-playPure :: Show b => Double -> (b, ((), b) -> (Double, b)) -> IO ()
-playPure !secs !(i, f) = do
-  rtaCloseStream
-  rtaInitialize
-  dev <- rtaGetDefaultOutputDevice
-  callback <- chunkify i f secs
-  with (StreamParameters dev 1 0) (\params -> do
-         rtaOpenStream params nullPtr float64 44100 4096 callback nullPtr nullPtr)
-  rtaStartStream
-  return ()
-
--}
