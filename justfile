@@ -22,14 +22,14 @@ docs:
     stack haddock
 
 # Format Haskell project with ormolu
-format:
+format-with-ormolu:
     echo "Formating the Haskell project."
     find ./src -name '*.hs' | xargs ormolu -i
     find ./test -name '*.hs' | xargs ormolu -i
     find ./bench -name '*.hs' | xargs ormolu -i
 
 # Format Haskell project with formolu
-format-with-fourmollu:
+format-with-fourmolu:
     echo "Formating the Haskell project."
     find ./src -name '*.hs' | xargs fourmolu -i
     find ./test -name '*.hs' | xargs fourmolu -i
