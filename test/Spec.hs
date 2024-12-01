@@ -6,7 +6,6 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
@@ -270,16 +269,13 @@ instance Arbitrary Control where
         -- Instrument <$> elements [AcousticGrandPiano, Violin, Flute]
       ]
 
-  -- instance Arbitrary Mode where
-  --   arbitrary = arbitraryBoundedEnum
-    
+-- instance Arbitrary Mode where
+--   arbitrary = arbitraryBoundedEnum
+
 -- Arbitrary instance for generating musical modes
 -- instance Arbitrary Mode where
-  -- arbitrary :: Gen Mode
-  -- arbitrary = elements [Major, Minor, Ionian, Dorian, Phrygian, Lydian, Mixolydian, Aeolian, Locrian]
-
-
-
+-- arbitrary :: Gen Mode
+-- arbitrary = elements [Major, Minor, Ionian, Dorian, Phrygian, Lydian, Mixolydian, Aeolian, Locrian]
 
 -- Arbitrary instance for generating non-rest music elements
 instance Arbitrary NonRestMusic where

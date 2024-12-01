@@ -1,6 +1,6 @@
-{-# LANGUAGE Arrows #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE Arrows              #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- Render a Music object to a audio signal function that can be further
@@ -14,17 +14,17 @@ module Euterpea.IO.Audio.Render
   )
 where
 
-import Control.Arrow
-import Control.Arrow.ArrowP
-import Control.Arrow.Operations
-import Control.SF.SF
-import qualified Data.IntMap as M
-import Data.List
-import Data.Ord (comparing)
-import Euterpea.IO.Audio.Basics
-import Euterpea.IO.Audio.Types
-import Euterpea.IO.MIDI.MEvent
-import Euterpea.Music
+import           Control.Arrow
+import           Control.Arrow.ArrowP
+import           Control.Arrow.Operations
+import           Control.SF.SF
+import qualified Data.IntMap              as M
+import           Data.List ( foldl', sortBy )
+import           Data.Ord                 (comparing)
+import           Euterpea.IO.Audio.Basics
+import           Euterpea.IO.Audio.Types
+import           Euterpea.IO.MIDI.MEvent
+import           Euterpea.Music
 
 -- Every instrument is a function that takes a duration, absolute
 -- pitch, volume, and a list of parameters (Doubles).  What the function
@@ -40,8 +40,8 @@ lookupInstr ins im =
     Nothing ->
       error $
         "Instrument "
-          ++ show ins
-          ++ " does not have a matching Instr in the supplied InstrMap."
+          <> show ins
+          <> " does not have a matching Instr in the supplied InstrMap."
 
 -- Each note in a Performance is tagged with a unique NoteId, which
 -- helps us keep track of the signal function associated with a note.
@@ -87,10 +87,10 @@ toEvtSF pf imap =
 -- are not used here, but they are expected to be the same.
 
 modSF :: M.IntMap a -> [Evt a] -> M.IntMap a
-modSF = foldl' mod
+modSF = foldl' this_mod
   where
-    mod m (_, NoteOn nid sf) = M.insert nid sf m
-    mod m (_, NoteOff nid) = M.delete nid m
+    this_mod m (_, NoteOn nid sf) = M.insert nid sf m
+    this_mod m (_, NoteOff nid) = M.delete nid m
 
 -- Simplified version of a parallel switcher.
 -- Note that this is tied to the particular implementation of SF, as it
@@ -98,7 +98,7 @@ modSF = foldl' mod
 
 pSwitch ::
   forall p col a.
-  (Clock p, Functor col) =>
+  (Functor col) =>
   col (Signal p () a) -> -- Initial SF collection.
   Signal p () [Evt (Signal p () a)] -> -- Input event stream.
   (col (Signal p () a) -> [Evt (Signal p () a)] -> col (Signal p () a)) ->
@@ -108,14 +108,14 @@ pSwitch ::
 -- The resulting collection of output values obtained from
 --   running all SFs in the collection.
 
-pSwitch col esig mod =
+pSwitch col esig this_mod =
   proc _ -> do
     evts <- esig -< ()
     rec -- perhaps this can be run at a lower rate using upsample
-        sfcol <- delay col -< mod sfcol' evts
+        sfcol <- delay col -< this_mod sfcol' evts
         let rs = fmap (\s -> runSF (strip s) ()) sfcol :: col (a, SF () a)
-            (as, sfcol' :: col (Signal p () a)) = (fmap fst rs, fmap (ArrowP . snd) rs)
-    outA -< as
+            (az, sfcol' :: col (Signal p () a)) = (fmap fst rs, fmap (ArrowP . snd) rs)
+    outA -< az
 
 renderSF ::
   (Clock p, ToMusic1 a, AudioSample b) =>
@@ -125,8 +125,8 @@ renderSF ::
   -- and a signal function that plays the music.
   (Double, Signal p () b)
 renderSF m im =
-  let (pf, d) = perform1Dur $ toMusic1 m -- Updated 16-Dec-2015
+  let (pf, this_dur) = perform1Dur $ toMusic1 m
       evtsf = toEvtSF pf im
       allsf = pSwitch M.empty evtsf modSF
       sf = allsf >>> arr (foldl' mix zero . M.elems) -- add up all samples
-   in (fromRational d, sf)
+   in (fromRational this_dur, sf)
