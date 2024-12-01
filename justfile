@@ -35,7 +35,7 @@ docs-no-show:
     @echo "Documentation generated. Open .stack-work/dist/*/doc/html/*/index.html in your browser"
 
 # Generate and open documentation in default browser
-docs: docs
+docs: docs-no-show
     @if command -v xdg-open > /dev/null; then \
         xdg-open `find .stack-work/dist -name index.html | grep -v "/doc/html/$" | head -n1`; \
     elif command -v open > /dev/null; then \
@@ -43,18 +43,11 @@ docs: docs
     fi
 
 # Format Haskell project with ormolu
-format-with-ormolu:
+format:
     echo "Formating the Haskell project."
     find ./src -name '*.hs' | xargs ormolu -i
     find ./test -name '*.hs' | xargs ormolu -i
     find ./bench -name '*.hs' | xargs ormolu -i
-
-# Format Haskell project with fourmolu
-format-with-fourmolu:
-    echo "Formating the Haskell project."
-    find ./src -name '*.hs' | xargs fourmolu -i
-    find ./test -name '*.hs' | xargs fourmolu -i
-    find ./bench -name '*.hs' | xargs fourmolu -i
 
 
 # Bench

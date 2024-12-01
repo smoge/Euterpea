@@ -1,19 +1,20 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE InstanceSigs      #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE StrictData        #-}
+{-# LANGUAGE TupleSections     #-}
 
 module Euterpea.Music where
 
-import Data.Bifunctor (first)
-import Data.List (uncons)
+import           Data.Bifunctor  (first)
+import           Data.List       (uncons)
 import qualified Data.Map.Strict as Map
-import Data.Maybe (fromMaybe)
-import GHC.Generics (Generic)
+import           Data.Maybe      (fromMaybe)
+import           GHC.Generics    (Generic)
+
 
 infixr 5 :+:, :=:
 
@@ -27,8 +28,8 @@ type Dur = Rational
 
 {- ORMOLU_DISABLE -}
 data PitchClass = Cff | Cf | C | Dff | Cs | Df | Css | D | Eff | Ds | Ef | Fff | Dss
-                 | E | Ff | Es | F | Gff | Ess | Fs | Gf | Fss | G | Aff | Gs | Af | Gss 
-                 | A | Bff | As | Bf | Ass | B | Bs | Bss 
+                 | E | Ff | Es | F | Gff | Ess | Fs | Gf | Fss | G | Aff | Gs | Af | Gss
+                 | A | Bff | As | Bf | Ass | B | Bs | Bss
   deriving (Show, Eq, Ord, Read, Bounded)
 {- ORMOLU_ENABLE -}
 
@@ -46,9 +47,9 @@ data Music a where
 
 instance Functor Music where
   fmap :: (a -> b) -> Music a -> Music b
-  fmap func (Prim p) = Prim (fmap func p) --  uses Primitive's Functor instance
-  fmap func (m1 :+: m2) = fmap func m1 :+: fmap func m2
-  fmap func (m1 :=: m2) = fmap func m1 :=: fmap func m2
+  fmap func (Prim p)     = Prim (fmap func p) --  uses Primitive's Functor instance
+  fmap func (m1 :+: m2)  = fmap func m1 :+: fmap func m2
+  fmap func (m1 :=: m2)  = fmap func m1 :=: fmap func m2
   fmap func (Modify x m) = Modify x (fmap func m)
 
 data Control where
@@ -72,6 +73,7 @@ data Mode
   | Locrian
   | CustomMode !String
   deriving (Show, Eq, Ord, Read)
+
 
 data PhraseAttribute
   = Dyn Dynamic
@@ -186,10 +188,10 @@ instance ToMusic1 (AbsPitch, Volume) where
   toMusic1 = fmap (\(p, v) -> (pitch p, [Volume v]))
 
 note :: Dur -> a -> Music a
-note dur_ p = Prim (Note dur_ p)
+note this_dur p = Prim (Note this_dur p)
 
 rest :: Dur -> Music a
-rest dur_ = Prim (Rest dur_)
+rest this_dur = Prim (Rest this_dur)
 
 tempo :: Dur -> Music a -> Music a
 tempo r = Modify (Tempo r)
@@ -210,41 +212,41 @@ keysig pc mo = Modify (KeySig pc mo)
 cff, cf, c, cs, css, dff, df, d, ds, dss, eff, ef, e, es, ess, fff, ff, f, fs, fss,
   gff, gf, g, gs, gss, aff, af, a, as, ass, bff, bf, b, bs, bss :: Octave -> Dur -> Music Pitch
 
-cff o dur_ = note dur_ (Cff, o)
-cf o dur_  = note dur_ (Cf, o)
-c o dur_   = note dur_ (C, o)
-cs o dur_  = note dur_ (Cs, o)
-css o dur_ = note dur_ (Css, o)
-dff o dur_ = note dur_ (Dff, o)
-df o dur_  = note dur_ (Df, o)
-d o dur_   = note dur_ (D, o)
-ds o dur_  = note dur_ (Ds, o)
-dss o dur_ = note dur_ (Dss, o)
-eff o dur_ = note dur_ (Eff, o)
-ef o dur_  = note dur_ (Ef, o)
-e o dur_   = note dur_ (E, o)
-es o dur_  = note dur_ (Es, o)
-ess o dur_ = note dur_ (Ess, o)
-fff o dur_ = note dur_ (Fff, o)
-ff o dur_  = note dur_ (Ff, o)
-f o dur_   = note dur_ (F, o)
-fs o dur_  = note dur_ (Fs, o)
-fss o dur_ = note dur_ (Fss, o)
-gff o dur_ = note dur_ (Gff, o)
-gf o dur_  = note dur_ (Gf, o)
-g o dur_   = note dur_ (G, o)
-gs o dur_  = note dur_ (Gs, o)
-gss o dur_ = note dur_ (Gss, o)
-aff o dur_ = note dur_ (Aff, o)
-af o dur_  = note dur_ (Af, o)
-a o dur_   = note dur_ (A, o)
-as o dur_  = note dur_ (As, o)
-ass o dur_ = note dur_ (Ass, o)
-bff o dur_ = note dur_ (Bff, o)
-bf o dur_  = note dur_ (Bf, o)
-b o dur_   = note dur_ (B, o)
-bs o dur_  = note dur_ (Bs, o)
-bss o dur_ = note dur_ (Bss, o)
+cff o this_dur = note this_dur (Cff, o)
+cf o this_dur  = note this_dur (Cf, o)
+c o this_dur   = note this_dur (C, o)
+cs o this_dur  = note this_dur (Cs, o)
+css o this_dur = note this_dur (Css, o)
+dff o this_dur = note this_dur (Dff, o)
+df o this_dur  = note this_dur (Df, o)
+d o this_dur   = note this_dur (D, o)
+ds o this_dur  = note this_dur (Ds, o)
+dss o this_dur = note this_dur (Dss, o)
+eff o this_dur = note this_dur (Eff, o)
+ef o this_dur  = note this_dur (Ef, o)
+e o this_dur   = note this_dur (E, o)
+es o this_dur  = note this_dur (Es, o)
+ess o this_dur = note this_dur (Ess, o)
+fff o this_dur = note this_dur (Fff, o)
+ff o this_dur  = note this_dur (Ff, o)
+f o this_dur   = note this_dur (F, o)
+fs o this_dur  = note this_dur (Fs, o)
+fss o this_dur = note this_dur (Fss, o)
+gff o this_dur = note this_dur (Gff, o)
+gf o this_dur  = note this_dur (Gf, o)
+g o this_dur   = note this_dur (G, o)
+gs o this_dur  = note this_dur (Gs, o)
+gss o this_dur = note this_dur (Gss, o)
+aff o this_dur = note this_dur (Aff, o)
+af o this_dur  = note this_dur (Af, o)
+a o this_dur   = note this_dur (A, o)
+as o this_dur  = note this_dur (As, o)
+ass o this_dur = note this_dur (Ass, o)
+bff o this_dur = note this_dur (Bff, o)
+bf o this_dur  = note this_dur (Bf, o)
+b o this_dur   = note this_dur (B, o)
+bs o this_dur  = note this_dur (Bs, o)
+bss o this_dur = note this_dur (Bss, o)
 
 
 bn, wn, hn, qn, en, sn, tn, sfn, dwn, dhn, dqn, den, dsn, dtn, ddhn, ddqn, dden :: Dur
@@ -308,39 +310,39 @@ absPitch (pc, oct) = 12 * (oct + 1) + pcToInt pc
 pcToInt :: PitchClass -> Int
 pcToInt pc = case pc of
   Cff -> -2
-  Cf -> -1
-  C -> 0
-  Cs -> 1
+  Cf  -> -1
+  C   -> 0
+  Cs  -> 1
   Css -> 2
   Dff -> 0
-  Df -> 1
-  D -> 2
-  Ds -> 3
+  Df  -> 1
+  D   -> 2
+  Ds  -> 3
   Dss -> 4
   Eff -> 2
-  Ef -> 3
-  E -> 4
-  Es -> 5
+  Ef  -> 3
+  E   -> 4
+  Es  -> 5
   Ess -> 6
   Fff -> 3
-  Ff -> 4
-  F -> 5
-  Fs -> 6
+  Ff  -> 4
+  F   -> 5
+  Fs  -> 6
   Fss -> 7
   Gff -> 5
-  Gf -> 6
-  G -> 7
-  Gs -> 8
+  Gf  -> 6
+  G   -> 7
+  Gs  -> 8
   Gss -> 9
   Aff -> 7
-  Af -> 8
-  A -> 9
-  As -> 10
+  Af  -> 8
+  A   -> 9
+  As  -> 10
   Ass -> 11
   Bff -> 9
-  Bf -> 10
-  B -> 11
-  Bs -> 12
+  Bf  -> 10
+  B   -> 11
+  Bs  -> 12
   Bss -> 13
 
 pitch :: AbsPitch -> Pitch
@@ -351,16 +353,22 @@ pitch ap =
 trans :: Int -> Pitch -> Pitch
 trans i p = pitch (absPitch p + i)
 
+
+-- [[Note]] Applying foldr to infinite structures usually doesn't terminate
+
 line, chord :: [Music a] -> Music a
 line = foldr (:+:) (rest 0)
 chord = foldr (:=:) (rest 0)
 
-line1, chord1 :: [Music a] -> Music a
-line1 = foldr1 (:+:)
-chord1 = foldr1 (:=:)
+line1 :: [Music a] -> Music a
+line1 = foldr (:+:) (rest 0)
+
+chord1 :: [Music a] -> Music a
+chord1 = foldr (:=:) (rest 0)
+
 
 offset :: Dur -> Music a -> Music a
-offset dur_ m = rest dur_ :+: m
+offset this_dur m = rest this_dur :+: m
 
 times :: Int -> Music a -> Music a
 times 0 _ = rest 0
@@ -385,21 +393,21 @@ invert :: Music Pitch -> Music Pitch
 invert m =
   let pRef = mFold pFun (++) (++) (\_ x -> x) m
    in case uncons pRef of
-        Nothing -> m -- no pitches in the structure!
+        Nothing     -> m -- no pitches in the structure!
         Just (p, _) -> invertAt p m
   where
     pFun (Note _ p) = [p]
-    pFun _ = []
+    pFun _          = []
 
 invert1 :: Music (Pitch, a) -> Music (Pitch, a)
 invert1 m =
   let pRef = mFold pFun (++) (++) (\_ x -> x) m
    in case uncons pRef of
-        Nothing -> m -- no pitches!
+        Nothing     -> m -- no pitches!
         Just (p, _) -> invertAt1 p m
   where
     pFun (Note _ (p, _)) = [p]
-    pFun _ = []
+    pFun _               = []
 
 retro :: Music a -> Music a
 retro n@(Prim _) = n
@@ -418,15 +426,15 @@ invertRetro = invert . retro
 
 dur :: Music a -> Dur
 dur music = case music of
-  Prim p -> primDur p
-  m1 :+: m2 -> dur m1 + dur m2
-  m1 :=: m2 -> dur m1 `max` dur m2
+  Prim p             -> primDur p
+  m1 :+: m2          -> dur m1 + dur m2
+  m1 :=: m2          -> dur m1 `max` dur m2
   Modify (Tempo r) m -> dur m / r
-  Modify _ m -> dur m
+  Modify _ m         -> dur m
   where
     primDur :: Primitive a -> Dur
-    primDur (Note dur_ _) = dur_
-    primDur (Rest dur_) = dur_
+    primDur (Note this_dur _) = this_dur
+    primDur (Rest this_dur)   = this_dur
 
 -- | The 'cut' function trims a 'Music' structure to a specified duration 'd'.
 -- It effectively limits the music piece's playtime to the provided duration.
@@ -451,18 +459,18 @@ dur music = case music of
 -- Prim (Note (1 % 1) (C,4)) :+: Prim (Rest (0 % 1))
 -- WAS WAS WAS Note: first note truncated, second note replaced with zero rest
 cut :: Dur -> Music a -> Music a
-cut dur_ _ | dur_ <= 0 = rest 0
-cut dur_ (Prim (Note oldD p)) =
-  let d' = max (min oldD dur_) 0
+cut this_dur _ | this_dur <= 0 = rest 0
+cut this_dur (Prim (Note oldD p)) =
+  let d' = max (min oldD this_dur) 0
    in if d' > 0 then note d' p else rest 0
-cut dur_ (Prim (Rest oldD)) = rest (max (min oldD dur_) 0)
-cut dur_ (m1 :=: m2) = cut dur_ m1 :=: cut dur_ m2
-cut dur_ (m1 :+: m2) =
-  let m'1 = cut dur_ m1
-      m'2 = cut (dur_ - dur m'1) m2
+cut this_dur (Prim (Rest oldD)) = rest (max (min oldD this_dur) 0)
+cut this_dur (m1 :=: m2) = cut this_dur m1 :=: cut this_dur m2
+cut this_dur (m1 :+: m2) =
+  let m'1 = cut this_dur m1
+      m'2 = cut (this_dur - dur m'1) m2
    in m'1 :+: m'2
-cut dur_ (Modify (Tempo r) m) = tempo r (cut (dur_ * r) m)
-cut dur_ (Modify cu m) = Modify cu (cut dur_ m)
+cut this_dur (Modify (Tempo r) m) = tempo r (cut (this_dur * r) m)
+cut this_dur (Modify cu m) = Modify cu (cut this_dur m)
 
 -- | The 'remove' function subtracts a given duration 'd' from a Music structure.
 -- Notes and rests at the start are shortened by 'd', potentially being eliminated
@@ -488,18 +496,18 @@ cut dur_ (Modify cu m) = Modify cu (cut dur_ m)
 -- Prim (Note (1 % 1) (C,4)) :+: Prim (Note (1 % 1) (D,4))
 -- WAS WAS Note: first note shortened by 1, second unchanged
 remove :: Dur -> Music a -> Music a
-remove dur_ m | dur_ <= 0 = m
-remove dur_ (Prim (Note oldD p)) =
-  let d' = max (oldD - dur_) 0
+remove this_dur m | this_dur <= 0 = m
+remove this_dur (Prim (Note oldD p)) =
+  let d' = max (oldD - this_dur) 0
    in if d' > 0 then note d' p else rest 0
-remove dur_ (Prim (Rest oldD)) = rest (max (oldD - dur_) 0)
-remove dur_ (m1 :=: m2) = remove dur_ m1 :=: remove dur_ m2
-remove dur_ (m1 :+: m2) =
-  let m'1 = remove dur_ m1
-      m'2 = remove (dur_ - dur m1) m2
+remove this_dur (Prim (Rest oldD)) = rest (max (oldD - this_dur) 0)
+remove this_dur (m1 :=: m2) = remove this_dur m1 :=: remove this_dur m2
+remove this_dur (m1 :+: m2) =
+  let m'1 = remove this_dur m1
+      m'2 = remove (this_dur - dur m1) m2
    in m'1 :+: m'2
-remove dur_ (Modify (Tempo r) m) = tempo r (remove (dur_ * r) m)
-remove dur_ (Modify c m) = Modify c (remove dur_ m)
+remove this_dur (Modify (Tempo r) m) = tempo r (remove (this_dur * r) m)
+remove this_dur (Modify c m) = Modify c (remove this_dur m)
 
 -- | The 'removeZeros' function simplifies a 'Music' structure by eliminating
 --  zero-duration notes and rests. It retains the same musical structure but
@@ -531,10 +539,10 @@ removeZeros = \case
     combineMusicWithZeros op m1 m2 =
       case (removeZeros m1, removeZeros m2) of
         (Prim (Note 0 _), m) -> m
-        (Prim (Rest 0), m) -> m
+        (Prim (Rest 0), m)   -> m
         (m, Prim (Note 0 _)) -> m
-        (m, Prim (Rest 0)) -> m
-        (m1', m2') -> m1' `op` m2'
+        (m, Prim (Rest 0))   -> m
+        (m1', m2')           -> m1' `op` m2'
 
 -- | The 'durL' function calculates the lazy list of durations for each segment
 -- within a 'Music' composition. It provides a timeline view, allowing us to
@@ -608,18 +616,10 @@ mergeLD ld1@(d1 : ds1) ld2@(d2 : ds2) =
 --  This function serves to determine the smallest duration that should be used
 --  when modifying or generating new music constructs.
 --
---  Parameters:
---  - ld: A 'LazyDur', which is a list of durations.
---  - d': A reference 'Dur' against which the elements of 'ld' are compared.
---
---  Returns:
---  The smallest 'Dur' found in the comparison between elements of 'ld' and 'd'.
--- >>> minL [1 / 1, 3 / 1] (1 / 2)
--- 1 % 2
 minL :: LazyDur -> Dur -> Dur
-minL [] d' = d'
-minL [d] d' = min d d'
-minL (d : ds) d' = if d < d' then minL ds d' else d'
+minL [] this_dur'       = this_dur'
+minL [this_dur] this_dur'      = min this_dur this_dur'
+minL (this_dur : this_durs) this_dur' = if this_dur < this_dur' then minL this_durs this_dur' else this_dur'
 
 -- | Cut a piece of music according to a list of durations
 -- This function adjusts the duration of each segment of music
@@ -674,14 +674,14 @@ m1 /=: m2 = cutL (durL m2) m1 :=: cutL (durL m1) m2
 -- m1 /=: m2  = cutL (durL m2) m1 :=: cutL (durL m1) m2
 
 pMap :: (a -> b) -> Primitive a -> Primitive b
-pMap f (Note dur_ x) = Note dur_ (f x)
-pMap _ (Rest dur_) = Rest dur_
+pMap func (Note this_dur x) = Note this_dur (func x)
+pMap _ (Rest this_dur)   = Rest this_dur
 
 mMap :: (a -> b) -> Music a -> Music b
-mMap f (Prim p) = Prim (pMap f p)
-mMap f (m1 :+: m2) = fmap f m1 :+: fmap f m2
-mMap f (m1 :=: m2) = fmap f m1 :=: fmap f m2
-mMap f (Modify c m) = Modify c (fmap f m)
+mMap func (Prim p)     = Prim (pMap func p)
+mMap func (m1 :+: m2)  = fmap func m1 :+: fmap func m2
+mMap func (m1 :=: m2)  = fmap func m1 :=: fmap func m2
+mMap func (Modify c m) = Modify c (fmap func m)
 
 -- instance Functor Primitive where
 --     fmap = pMap
@@ -707,9 +707,9 @@ mFold ::
 mFold f (+:) (=:) g m =
   let rec = mFold f (+:) (=:) g
    in case m of
-        Prim p -> f p
-        m1 :+: m2 -> rec m1 +: rec m2
-        m1 :=: m2 -> rec m1 =: rec m2
+        Prim p     -> f p
+        m1 :+: m2  -> rec m1 +: rec m2
+        m1 :=: m2  -> rec m1 =: rec m2
         Modify c m -> g c (rec m)
 
 -- Calculate total duration
@@ -717,30 +717,30 @@ dur' :: Music a -> Dur
 dur' = mFold primDur (+) max tempoMod
   where
     primDur (Note d _) = d
-    primDur (Rest d) = d
+    primDur (Rest d)   = d
     tempoMod (Tempo r) d = d / r
-    tempoMod _ d = d
+    tempoMod _ d         = d
 
 -- Count all notes
 countNotes :: Music a -> Int
 countNotes = mFold f (+) (+) (\_ n -> n)
   where
     f (Note _ _) = 1
-    f (Rest _) = 0
+    f (Rest _)   = 0
 
 -- Collect all pitches
 getPitches :: Music Pitch -> [Pitch]
 getPitches = mFold f (++) (++) (\_ ps -> ps)
   where
     f (Note _ p) = [p]
-    f (Rest _) = []
+    f (Rest _)   = []
 
 -- Convert to simple string representation
 showMusic :: (Show a) => Music a -> String
 showMusic = mFold f (+++) (|||) g
   where
     f (Note d p) = "Note " <> show d <> " " <> show p
-    f (Rest d) = "Rest " <> show d
+    f (Rest d)   = "Rest " <> show d
     (+++) s1 s2 = s1 <> " :+: " <> s2
     (|||) s1 s2 = s1 <> " :=: " <> s2
     g c s = "Modify " <> show c <> " (" <> s <> ")"
@@ -755,8 +755,8 @@ shiftPitches1 :: AbsPitch -> Music (Pitch, b) -> Music (Pitch, b)
 shiftPitches1 k = fmap (first (trans k))
 
 scaleDurations :: Rational -> Music a -> Music a
-scaleDurations r (Prim (Note dur_ p)) = note (dur_ / r) p
-scaleDurations r (Prim (Rest dur_)) = rest (dur_ / r)
+scaleDurations r (Prim (Note this_dur p)) = note (this_dur / r) p
+scaleDurations r (Prim (Rest this_dur)) = rest (this_dur / r)
 scaleDurations r (m1 :+: m2) = scaleDurations r m1 :+: scaleDurations r m2
 scaleDurations r (m1 :=: m2) = scaleDurations r m1 :=: scaleDurations r m2
 scaleDurations r (Modify c m) = Modify c (scaleDurations r m)
@@ -841,9 +841,9 @@ mFoldl func (+:) (=:) g z m = case m of
 -- Nothing
 mTraverse :: (Applicative f) => (Primitive a -> f (Primitive b)) -> Music a -> f (Music b)
 mTraverse func m = case m of
-  Prim p -> Prim <$> func p
-  m1 :+: m2 -> (:+:) <$> mTraverse func m1 <*> mTraverse func m2
-  m1 :=: m2 -> (:=:) <$> mTraverse func m1 <*> mTraverse func m2
+  Prim p       -> Prim <$> func p
+  m1 :+: m2    -> (:+:) <$> mTraverse func m1 <*> mTraverse func m2
+  m1 :=: m2    -> (:=:) <$> mTraverse func m1 <*> mTraverse func m2
   Modify cu m' -> Modify cu <$> mTraverse func m'
 
 -- | Monadic fold
@@ -917,7 +917,7 @@ numberNotes :: Music Pitch -> (Music (Int, Pitch), Int)
 numberNotes = mFoldS func (:+:) (:=:) Modify 1
   where
     func n (Note durac p) = (Prim (Note durac (n, p)), n + 1)
-    func n (Rest durac) = (Prim (Rest durac), n)
+    func n (Rest durac)   = (Prim (Rest durac), n)
 
 data InstrumentName
   = AcousticGrandPiano
