@@ -1,7 +1,7 @@
-{-# LANGUAGE Arrows #-}
+{-# LANGUAGE Arrows                    #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
 
 module Euterpea.IO.Audio.Basics
   ( outA,
@@ -14,11 +14,12 @@ module Euterpea.IO.Audio.Basics
   )
 where
 
-import Control.Arrow
-import Control.Arrow.ArrowP
-import Control.Arrow.Operations
-import Euterpea.IO.Audio.Types
-import Euterpea.Music
+import           Control.Arrow
+import           Control.Arrow.ArrowP
+import           Control.Arrow.Operations
+import           Euterpea.IO.Audio.Types
+import           Euterpea.Music
+
 
 outA :: (Arrow a) => a b b
 outA = arr id

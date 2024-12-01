@@ -1,12 +1,12 @@
-{-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE EmptyDataDecls      #-}
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Euterpea.IO.Audio.Types where
 
-import Control.Arrow.ArrowP
-import Control.SF.SF
-import Data.Proxy (Proxy (..))
+import           Control.Arrow.ArrowP
+import           Control.SF.SF
+import           Data.Proxy           (Proxy (..))
 
 class Clock p where
   rate :: p -> Double
@@ -18,9 +18,6 @@ class AudioSample a where
   zero :: a
   mix :: a -> a -> a
   collapse :: a -> [Double]
-
--- class Clock p where
---   rate :: p -> Double -- sampling rate
 
 data AudRate
 
@@ -44,9 +41,7 @@ type SigFun clk a b = ArrowP SF clk a b
 
 -- Arbitrary number of channels (say, 5.1) can be supported by just adding more
 -- instances of the AudioSample type class.
-
 -- numChans :: a -> Int
-
 -- allows us to reify the number of channels from the type.
 
 instance AudioSample Double where
