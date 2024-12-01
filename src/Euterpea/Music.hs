@@ -561,11 +561,11 @@ durL = \case
   m1 :+: m2 ->
     let d1 = durL m1
         lastD = last d1
-     in d1 ++ map (+ lastD) (durL m2)
+     in d1 <> fmap (+ lastD) (durL m2)
   -- Parallel composition: merge duration lists
   m1 :=: m2 -> mergeLD (durL m1) (durL m2)
   -- Tempo modification: scale all durations
-  Modify (Tempo r) m -> map (/ r) (durL m)
+  Modify (Tempo r) m -> fmap (/ r) (durL m)
   -- Other modifications: pass through
   Modify _ m -> durL m
 
@@ -739,11 +739,11 @@ getPitches = mFold f (++) (++) (\_ ps -> ps)
 showMusic :: (Show a) => Music a -> String
 showMusic = mFold f (+++) (|||) g
   where
-    f (Note d p) = "Note " ++ show d ++ " " ++ show p
-    f (Rest d) = "Rest " ++ show d
-    (+++) s1 s2 = s1 ++ " :+: " ++ s2
-    (|||) s1 s2 = s1 ++ " :=: " ++ s2
-    g c s = "Modify " ++ show c ++ " (" ++ s ++ ")"
+    f (Note d p) = "Note " <> show d <> " " <> show p
+    f (Rest d) = "Rest " <> show d
+    (+++) s1 s2 = s1 <> " :+: " <> s2
+    (|||) s1 s2 = s1 <> " :=: " <> s2
+    g c s = "Modify " <> show c <> " (" <> s <> ")"
 
 shiftPitches :: AbsPitch -> Music Pitch -> Music Pitch
 shiftPitches k = fmap (trans k)
