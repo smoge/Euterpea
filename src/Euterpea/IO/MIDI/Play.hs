@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Euterpea.IO.MIDI.Play
@@ -107,7 +108,7 @@ playS = playC defParams {strict = True}
 playDev :: (ToMusic1 a, NFData a, Enum InstrumentName) => Int -> Music a -> IO ()
 playDev i = playC defParams {devID = Just $ unsafeOutputID i, perfAlg = fixPerf}
   where
-    fixPerf = map (\e -> e {eDur = max 0 (eDur e - 0.000001)}) . perform
+    fixPerf = fmap (\e -> e {eDur = max 0 (eDur e - 0.000001)}) . perform
 
 playDevS :: (ToMusic1 a, NFData a, Enum InstrumentName) => Int -> Music a -> IO ()
 playDevS i = playC defParams {strict = True, devID = Just $ unsafeOutputID i}
@@ -118,7 +119,7 @@ playC p = if strict p then playStrict p else playInf p
 devices :: IO ()
 devices = do
   (devsIn, devsOut) <- getAllDevices
-  let f (devid, devname) = "  " ++ show devid ++ "\t" ++ name devname ++ "\n"
+  let f (devid, devname) = "  " <> (show devid <> ("\t" ++ name devname ++ "\n"))
       strIn = concatMap f devsIn
       strOut = concatMap f devsOut
   putStrLn "\nInput devices: " >> putStrLn strIn
@@ -138,8 +139,8 @@ playM' devID_ midi = handleCtrlC $ do
     Just devID_ -> playMidi devID_ midi
   result <- terminate
   case result of
-    Left err -> putStrLn $ "Terminate failed with error: " ++ show err
-    Right _ -> return ()
+    Left err -> putStrLn ("Terminate failed with error: " <> show err)
+    Right _ -> pure ()
   where
     handleCtrlC :: IO a -> IO a
     handleCtrlC op = onException op (void terminate)
@@ -150,7 +151,7 @@ playInf p m = handleCtrlC $ do
   maybe (defaultOutput playRec) playRec (devID p) $ musicToMsgs' p m
   threadDelay $ round (closeDelay p * 1000000)
   terminateMidi
-  return ()
+  pure ()
   where
     handleCtrlC :: IO a -> IO a
     handleCtrlC op = do
@@ -161,15 +162,19 @@ resolveOutDev :: Maybe OutputDeviceID -> IO OutputDeviceID
 resolveOutDev Nothing = do
   outDevM <- getDefaultOutputDeviceID
   (_, outs) <- getAllDevices
-  let allOutDevs = map fst outs
+  let allOutDevs = fmap fst outs
   let outDev = case outDevM of
         Nothing ->
           if null allOutDevs
             then error "No MIDI outputs!"
-            else head allOutDevs
+            else
+              ( case allOutDevs of
+                  x : _ -> x
+                  [] -> error _
+              )
         Just x -> unsafeOutputID x
-  return outDev
-resolveOutDev (Just x) = return x
+  pure outDev
+resolveOutDev (Just x) = pure x
 
 stopMidiOut :: OutputDeviceID -> Channel -> IO ()
 stopMidiOut dev i =
@@ -180,7 +185,7 @@ stopMidiOut dev i =
       stopMidiOut dev (i - 1)
 
 playRec :: (RealFrac a) => OutputDeviceID -> [(a, MidiMessage)] -> IO ()
-playRec _ [] = return ()
+playRec _ [] = pure ()
 playRec dev (x@(t, m) : ms) =
   if t > 0
     then threadDelay (toMicroSec t) >> playRec dev ((0, m) : ms)
@@ -204,9 +209,18 @@ musicToMsgs' p m =
   let perf = perfAlg p $ toMusic1 m -- obtain the performance
       evsA = channelMap (chanPolicy p) [] perf -- time-stamped ANote values
       evs = stdMerge evsA -- merged On/Off events sorted by absolute time
-      times = map fst evs -- absolute times in seconds
-      newTimes = zipWith subtract (head times : times) times -- relative times
-   in zip newTimes (map snd evs)
+      times = fmap fst evs -- absolute times in seconds
+      newTimes =
+        zipWith
+          subtract
+          ( ( case times of
+                x : _ -> x
+                [] -> error _
+            )
+              : times
+          )
+          times -- relative times
+   in zip newTimes (fmap snd evs)
   where
     -- stdMerge: converts ANotes into a sorted list of On/Off events
     stdMerge :: [(Time, MidiMessage)] -> [(Time, MidiMessage)]
@@ -247,7 +261,7 @@ linearCP cLim pChan i cMap =
        in if newChan < cLim
             then (newChan, (i, newChan) : cMap)
             else
-              error ("Cannot use more than " ++ show cLim ++ " instruments.")
+              error ("Cannot use more than " <> (show cLim <> " instruments."))
 
 dynamicCP :: NumChannels -> PercChan -> ChannelMapFun
 dynamicCP cLim pChan i cMap =
@@ -256,14 +270,19 @@ dynamicCP cLim pChan i cMap =
     else
       let cMapNoP = filter ((/= Percussion) . fst) cMap
           extra = ([(Percussion, pChan) | length cMapNoP /= length cMap])
-          newChan = snd $ last cMapNoP
+          newChan =
+            snd
+              ( case reverse cMapNoP of
+                  x : _ -> x
+                  [] -> error _
+              )
        in if length cMapNoP < cLim - 1
             then linearCP cLim pChan i cMap
-            else (newChan, (i, newChan) : take (length cMapNoP - 1) cMapNoP ++ extra)
+            else (newChan, (i, newChan) : (take (length cMapNoP - 1) cMapNoP <> extra))
 
 predefinedCP :: ChannelMap -> ChannelMapFun
 predefinedCP cMapFixed i _ = case lookup i cMapFixed of
-  Nothing -> error (show i ++ " is not included in the channel map.")
+  Nothing -> error (show i <> " is not included in the channel map.")
   Just c -> (c, cMapFixed)
 
 instance NFData FileType where

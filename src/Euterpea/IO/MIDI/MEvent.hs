@@ -29,12 +29,12 @@ merge :: Performance -> Performance -> Performance
 merge [] es2 = es2
 -- \^ If the first list is empty, return the second list.
 merge es1 [] = es1
--- \^ If the second list is empty, return the first list.
-merge a@(e1 : es1) b@(e2 : es2) =
+-- \^ If the second list is empty, ret``urn the first list.
+merge list1@(e1 : es1) list2@(e2 : es2) =
   if eTime e1 < eTime e2
-    then e1 : merge es1 b
+    then e1 : merge es1 list2
     -- \^ If the first event is earlier, add it to the result.
-    else e2 : merge a es2
+    else e2 : merge list1 es2
 
 -- \^ Otherwise, add the second event to the result.
 
@@ -90,7 +90,7 @@ musicToMEvents c@MContext {mcTime = _, mcDur = dt} (Prim (Rest d)) = ([], d * dt
 musicToMEvents c@MContext {mcTime = t, mcDur = _} (m1 :+: m2) =
   let (evs1, d1) = musicToMEvents c m1
       (evs2, d2) = musicToMEvents c {mcTime = t + d1} m2
-   in (evs1 ++ evs2, d1 + d2)
+   in (evs1 <> evs2, d1 + d2)
 musicToMEvents c@MContext {mcTime = t, mcDur = dt} (m1 :=: m2) =
   let (evs1, d1) = musicToMEvents c m1
       (evs2, d2) = musicToMEvents c m2
@@ -141,27 +141,27 @@ phraseToMEvents c@MContext {mcTime = t, mcInst = i, mcDur = dt} (pa : pas) m =
                   t' = (1 + dt * r) * dt + t0
                   d' = (1 + (2 * dt + d) * r) * d
                in e {eTime = t', eDur = d'}
-         in (map updateEvent pf, (1 + x) * dur)
+         in (fmap updateEvent pf, (1 + x) * dur)
 
       adjustVolume x =
         let t0 = eTime (head pf)
             r = x / dur
             updateEvent e@MEvent {eTime = t, eVol = v} =
               e {eVol = round ((1 + (t - t0) * r) * fromIntegral v)}
-         in (map updateEvent pf, dur)
+         in (fmap updateEvent pf, dur)
 
-      adjustDuration factor = (map (\e -> e {eDur = factor * eDur e}) pf, dur)
+      adjustDuration factor = (fmap (\e -> e {eDur = factor * eDur e}) pf, dur)
 
       applySlurred x =
-        let lastStartTime = maximum $ map eTime pf
+        let lastStartTime = maximum $ fmap eTime pf
             setDuration e =
               if eTime e < lastStartTime
                 then e {eDur = x * eDur e}
                 else e
-         in (map setDuration pf, dur)
+         in (fmap setDuration pf, dur)
    in case pa of
         Dyn (Accent x) ->
-          (map (\e -> e {eVol = round (x * fromIntegral (eVol e))}) pf, dur)
+          (fmap (\e -> e {eVol = round (x * fromIntegral (eVol e))}) pf, dur)
         Dyn (StdLoudness l) ->
           loudnessLevel $ case l of
             PPP -> 40

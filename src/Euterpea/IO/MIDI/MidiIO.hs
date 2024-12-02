@@ -139,7 +139,7 @@ getAllDevices = do
   n <- countDevices
   deviceInfos <- mapM getDeviceInfo [0 .. n - 1]
   let devs = zip [0 .. n - 1] deviceInfos
-  return
+  pure
     ( [(InputDeviceID d, i) | (d, i) <- devs, input i],
       [(OutputDeviceID d, i) | (d, i) <- devs, output i]
     )
@@ -175,12 +175,11 @@ makePriorityChannel = do
         case Heap.view h of
           Just ((a, b), h') -> do
             writeIORef heapRef h'
-            return (Just (a, b))
-          Nothing -> return Nothing
-      peek = do
-        fmap fst . Heap.view <$> getHeap
+            pure (Just (a, b))
+          Nothing -> pure Nothing
+      peek = fmap fst . Heap.view <$> getHeap
 
-  return $ PrioChannel getHeap push pop peek
+  pure $ PrioChannel getHeap push pop peek
 
 outDevMap ::
   IORef
@@ -212,7 +211,7 @@ initializeMidi :: IO ()
 initializeMidi = do
   e <- initialize
   case e of
-    Right _ -> return ()
+    Right _ -> pure ()
     Left e' -> reportError "initializeMidi" e'
 
 terminateMidi :: IO ()
@@ -221,8 +220,8 @@ terminateMidi = do
   mapM_ (\(_, (_, _out, stop)) -> stop) inits
   result <- terminate
   case result of
-    Left err -> putStrLn ("Error during termination: " ++ show err)
-    Right _ -> return ()
+    Left err -> putStrLn ("Error during termination: " <> show err)
+    Right _ -> pure ()
   writeIORef outDevMap []
   writeIORef outPort []
   writeIORef inPort []
@@ -231,7 +230,7 @@ getOutDev :: OutputDeviceID -> IO (PrioChannel Time Message, (Time, Message) -> 
 getOutDev devId = do
   inits <- readIORef outDevMap
   case lookup devId inits of
-    Just f -> return f
+    Just f -> pure f
     Nothing -> do
       x <- midiOutRealTime' devId -- Changes made by Donya Quick: this line used to pattern match against Just.
       pChan <- makePriorityChannel
@@ -239,8 +238,8 @@ getOutDev devId = do
         Just (mout, stop) -> do
           -- Case statement added.
           modifyIORef outDevMap ((devId, (pChan, mout, stop)) :)
-          return (pChan, mout, stop)
-        Nothing -> return (pChan, const (return ()), return ()) -- Nothing case added
+          pure (pChan, mout, stop)
+        Nothing -> pure (pChan, const (pure ()), pure ()) -- Nothing case added
 
 pollMidiCB :: InputDeviceID -> ((Time, [Message]) -> IO ()) -> IO ()
 pollMidiCB idid@(InputDeviceID devId) callback = do
@@ -261,7 +260,7 @@ pollMidiCB idid@(InputDeviceID devId) callback = do
         Right l -> do
           now <- getTimeNow
           case mapMaybe (msgToMidi . decodeMsg . message) l of
-            [] -> return ()
+            [] -> pure ()
             ms -> callback (now, ms)
 
 pollMidi :: InputDeviceID -> IO (Maybe (Time, [Message]))
@@ -271,7 +270,7 @@ pollMidi idid@(InputDeviceID devId) = do
     Nothing -> do
       r <- openInput devId
       case r of
-        Left e -> reportError "pollMIDI" e >> return Nothing
+        Left e -> reportError "pollMIDI" e >> pure Nothing
         Right s -> addPort inPort (idid, s) >> input s
     Just s -> input s
   where
@@ -279,12 +278,12 @@ pollMidi idid@(InputDeviceID devId) = do
     input s = do
       e <- readEvents s
       case e of
-        Left e -> reportError "pollMIDI" e >> return Nothing
+        Left e -> reportError "pollMIDI" e >> pure Nothing
         Right l -> do
           now <- getTimeNow
           case mapMaybe (msgToMidi . decodeMsg . message) l of
-            [] -> return Nothing
-            ms -> return $ Just (now, ms)
+            [] -> pure Nothing
+            ms -> pure $ Just (now, ms)
 
 deliverMidiEvent :: OutputDeviceID -> MidiEvent -> IO ()
 deliverMidiEvent devId (t, m) = do
@@ -307,12 +306,12 @@ outputMidi devId = do
   let loop = do
         r <- peek pChan
         case r of
-          Nothing -> return ()
+          Nothing -> pure ()
           Just (t, m) -> do
             now <- getTimeNow
             CM.when (t <= now) $ out (now, m) >> pop pChan >> loop
   loop
-  return ()
+  pure ()
 
 -- playMidi :: OutputDeviceID -> Midi -> IO ()
 -- playMidi device midi@(Midi _ division _) = do
@@ -333,8 +332,16 @@ outputMidi devId = do
 
 playMidi :: OutputDeviceID -> Midi -> IO ()
 playMidi device midi@(Midi _ division _) = do
-  let track = toRealTime division (toAbsTime (head (tracks (toSingleTrack midi))))
-  midiOutRealTime device >>= maybe (return ()) (`playMIDIImplementation` track)
+  let track =
+        toRealTime
+          division
+          ( toAbsTime
+              ( case tracks (toSingleTrack midi) of
+                  x : _ -> x
+                  [] -> error _
+              )
+          )
+  midiOutRealTime device >>= maybe (pure ()) (`playMIDIImplementation` track)
   where
     playMIDIImplementation (out, stop) track = do
       t0 <- getTimeNow
@@ -346,38 +353,38 @@ midiOutRealTime' :: OutputDeviceID -> IO (Maybe ((Time, Message) -> IO (), IO ()
 midiOutRealTime' odid@(OutputDeviceID devId) = do
   s <- openOutput devId 1
   case s of
-    Left e -> reportError "Unable to open output device in midiOutRealTime'" e >> return Nothing
+    Left e -> reportError "Unable to open output device in midiOutRealTime'" e >> pure Nothing
     Right s -> do
       addPort outPort (odid, s)
-      return $ Just (process odid, finalize odid)
+      pure $ Just (process odid, finalize odid)
   where
     process odid (t, msg) = do
       s <- lookupPort outPort odid
       case s of
-        Nothing -> error ("midiOutRealTime': port " ++ show odid ++ " is not open for output")
+        Nothing -> error ("midiOutRealTime': port " <> (show odid <> " is not open for output"))
         Just s -> do
           if isTrackEnd msg
-            then return ()
+            then pure ()
             else case midiEvent msg of
               Just m -> writeMsg s t $ encodeMsg m
-              Nothing -> return ()
+              Nothing -> pure ()
     writeMsg s t m = do
       e <- writeShort s (PMEvent m (round (t * 1e3)))
       case e of
         Left e' -> reportError "midiOutRealTime'" e'
-        Right _ -> return ()
+        Right _ -> pure ()
     finalize odid = do
       s <- lookupPort outPort odid
-      e <- maybe (return (Right NoError'NoData)) close s
+      e <- maybe (pure (Right NoError'NoData)) close s
       case e of
         Left e' -> reportError "midiOutRealTime'" e'
-        Right _ -> return ()
+        Right _ -> pure ()
 
 midiOutRealTime :: OutputDeviceID -> IO (Maybe ((Time, Message) -> IO (), IO ()))
 midiOutRealTime (OutputDeviceID devId) = do
   s <- openOutput devId 1
   case s of
-    Left e -> reportError "outputMidi" e >> return Nothing
+    Left e -> reportError "outputMidi" e >> pure Nothing
     Right s -> do
       ch <- atomically newTChan
       wait <- newEmptyMVar
@@ -422,32 +429,32 @@ midiOutRealTime (OutputDeviceID devId) = do
             finishup = putMVar wait () >> close s >> putMVar fin ()
             process t msg =
               if isTrackEnd msg
-                then return True
+                then pure True
                 else case midiEvent msg of
                   Just m -> writeMsg t $ encodeMsg m
-                  Nothing -> return False
+                  Nothing -> pure False
             writeMsg t m = do
               e <- writeShort s (PMEvent m (round (t * 1e3)))
               case e of
                 Left BufferOverflow -> putStrLn "overflow" >> threadDelay 10000 >> writeMsg t m
-                Left e' -> reportError "outputMidi" e' >> return True
-                Right _ -> return False
+                Left e' -> reportError "outputMidi" e' >> pure True
+                Right _ -> pure False
 
 midiEvent :: Message -> Maybe PMMsg
-midiEvent (NoteOff c p v) = Just $ PMMsg (128 .|. (fromIntegral c .&. 0xF)) (fromIntegral p) (fromIntegral v)
-midiEvent (NoteOn c p v) = Just $ PMMsg (144 .|. (fromIntegral c .&. 0xF)) (fromIntegral p) (fromIntegral v)
-midiEvent (KeyPressure c p pr) = Just $ PMMsg (160 .|. (fromIntegral c .&. 0xF)) (fromIntegral p) (fromIntegral pr)
-midiEvent (ControlChange c cn cv) = Just $ PMMsg (176 .|. (fromIntegral c .&. 0xF)) (fromIntegral cn) (fromIntegral cv)
-midiEvent (ProgramChange c pn) = Just $ PMMsg (192 .|. (fromIntegral c .&. 0xF)) (fromIntegral pn) 0
-midiEvent (ChannelPressure c pr) = Just $ PMMsg (208 .|. (fromIntegral c .&. 0xF)) (fromIntegral pr) 0
-midiEvent (PitchWheel c pb) = Just $ PMMsg (224 .|. (fromIntegral c .&. 0xF)) (fromIntegral lo) (fromIntegral hi)
+midiEvent (NoteOff c p v) = Just $ PMMsg (128 .|. fromIntegral c .&. 0xF) (fromIntegral p) (fromIntegral v)
+midiEvent (NoteOn c p v) = Just $ PMMsg (144 .|. fromIntegral c .&. 0xF) (fromIntegral p) (fromIntegral v)
+midiEvent (KeyPressure c p pr) = Just $ PMMsg (160 .|. fromIntegral c .&. 0xF) (fromIntegral p) (fromIntegral pr)
+midiEvent (ControlChange c cn cv) = Just $ PMMsg (176 .|. fromIntegral c .&. 0xF) (fromIntegral cn) (fromIntegral cv)
+midiEvent (ProgramChange c pn) = Just $ PMMsg (192 .|. fromIntegral c .&. 0xF) (fromIntegral pn) 0
+midiEvent (ChannelPressure c pr) = Just $ PMMsg (208 .|. fromIntegral c .&. 0xF) (fromIntegral pr) 0
+midiEvent (PitchWheel c pb) = Just $ PMMsg (224 .|. fromIntegral c .&. 0xF) (fromIntegral lo) (fromIntegral hi)
   where
-    (hi, lo) = (pb `shiftR` 8, pb .&. 0xFF)
+    (hi, lo) = (shift pb (-8), pb .&. 0xFF)
 midiEvent _ = Nothing
 
 msgToMidi :: PMMsg -> Maybe Message
 msgToMidi (PMMsg m d1 d2) =
-  let k = (m .&. 0xF0) `shiftR` 4
+  let k = shift (m .&. 0xF0) (-4)
       c = fromIntegral (m .&. 0x0F)
    in case k of
         0x8 -> Just $ NoteOff c (fromIntegral d1) (fromIntegral d2)
@@ -456,14 +463,14 @@ msgToMidi (PMMsg m d1 d2) =
         0xB -> Just $ ControlChange c (fromIntegral d1) (fromIntegral d2)
         0xC -> Just $ ProgramChange c (fromIntegral d1)
         0xD -> Just $ ChannelPressure c (fromIntegral d1)
-        0xE -> Just $ PitchWheel c (fromIntegral (d1 + d2 `shiftL` 8))
+        0xE -> Just $ PitchWheel c (fromIntegral (d1 + shift d2 8))
         0xF -> Nothing -- SysEx event not handled
         _ -> Nothing
 
 reportError :: String -> PMError -> IO ()
 reportError prompt e = do
   err <- getErrorText e
-  hPutStrLn stderr $ prompt ++ ": " ++ err
+  hPutStrLn stderr (prompt <> (": " <> err))
 
 -- Prints all DeviceInfo found by getAllDevices.
 printAllDeviceInfo :: IO ()
@@ -476,7 +483,7 @@ playTrackRealTime :: OutputDeviceID -> [(t, Message)] -> IO ()
 playTrackRealTime device track = do
   out <- midiOutRealTime device
   case out of
-    Nothing -> return ()
+    Nothing -> pure ()
     Just (out, stop) -> finally (playTrack out track) stop
   where
     playTrack out [] = do
@@ -486,7 +493,7 @@ playTrackRealTime device track = do
       t <- getTimeNow
       out (t, m)
       if isTrackEnd m
-        then return ()
+        then pure ()
         else playTrack out s
 
 {-
@@ -517,9 +524,9 @@ playTrack s ch t0 = playTrack' 0
 recordMidi :: DeviceID -> (Track Time -> IO ()) -> IO ()
 recordMidi device f = do
   ch <- newChan
-  final <- midiInRealTime device (\e -> writeChan ch e >> return False)
+  final <- midiInRealTime device (\e -> writeChan ch e >> pure False)
   case final of
-    Nothing -> return ()
+    Nothing -> pure ()
     Just fin -> do
       track <- getChanContents ch
       done <- newEmptyMVar
@@ -528,13 +535,13 @@ recordMidi device f = do
       _ <- getLine
       fin
       takeMVar done
-      return ()
+      pure ()
 
 midiInRealTime :: DeviceID -> ((Time, Message) -> IO Bool) -> IO (Maybe (IO ()))
 midiInRealTime device callback = do
   r <- openInput device
   case r of
-    Left e -> reportError "midiInRealTime" e >> return Nothing
+    Left e -> reportError "midiInRealTime" e >> pure Nothing
     Right s -> do
       fin <- newEmptyMVar
       _ <- forkIO (loop Nothing s fin)
@@ -544,14 +551,14 @@ midiInRealTime device callback = do
       done <- tryTakeMVar fin
       t <- getTimeNow
       case done of
-        Just _ -> close s >> callback (t, TrackEnd) >> takeMVar fin >> return ()
+        Just _ -> close s >> callback (t, TrackEnd) >> takeMVar fin >> pure ()
         Nothing -> do
           e <- readEvents s
           case e of
             Left e -> do
               reportError "midiInRealTime" e
               _ <- callback (t, TrackEnd)
-              return ()
+              pure ()
             Right l -> do
               t <- getTimeNow
               sendEvts start t l
