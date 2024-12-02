@@ -1051,7 +1051,7 @@ tableBessF xint x =
 
 normalizeSegs :: [(SegLength, entPt)] -> [(SegLength, entPt)]
 normalizeSegs segs =
-  let s = sum fmap fst segs)
+  let s = sum (fmap fst segs)
       fact = if (s > 1) then (1 / s) else 1 -- don't force max<1 up to max=1
    in fmap (\(x, y) -> (x * fact, y)) segs
 
