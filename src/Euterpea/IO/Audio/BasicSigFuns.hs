@@ -112,15 +112,15 @@ data Table
       !Bool -- Whether the table is normalized
 
 instance Show Table where
-  show (Table sz a n) = "Table with " ++ show sz ++ " entries: " ++ show a
+  show (Table sz a n) = "Table with " <> show sz <> " entries: " <> show a
 
 funToTable :: (Double -> Double) -> Bool -> Int -> Table
 funToTable f normalize size =
   let delta = 1 / fromIntegral size
-      ys = take size (map f [0, delta ..]) ++ [head ys]
+      ys = (take size (fmap f [0, delta ..]) <> [head ys])
       -- make table one size larger as an extended guard point
-      zs = if normalize then map (/ maxabs ys) ys else ys
-      maxabs = maximum . map abs
+      zs = if normalize then fmap (/ maxabs ys) ys else ys
+      maxabs = maximum . fmap abs
    in Table size (listArray (0, size) zs) normalize
 
 readFromTable :: Table -> Double -> Double
@@ -138,7 +138,7 @@ readFromTableRaw (Table _ a _) idx = a `unsafeAt` idx
 readFromTablei :: Table -> Double -> Double
 readFromTablei (Table sz array _) pos =
   let idx = fromIntegral sz * pos -- fractional "index" in table ([0,sz])
-      idx0 = (truncate idx) `mod` sz :: Int
+      idx0 = truncate idx `mod` sz :: Int
       idx1 = idx0 + 1 :: Int
       val0 = array `unsafeAt` idx0
       val1 = array `unsafeAt` idx1
@@ -636,7 +636,7 @@ filterBandPass scale =
     update = proc (rsnData, kcf, kbw) -> do
       -- kcf or kbw changed, recalc consts
       let cosf = cos $ kcf * tpidsr -- cos (2pi * freq / rate)
-          c3 = exp $ -kbw * tpidsr -- exp (-2pi * bwidth / rate)
+          c3 = exp $ - (kbw * tpidsr) -- exp (-2pi * bwidth / rate)
           -- (note on csound code) mtpdsr = -tpidsr
           -- c1   Gain for input signal.
           -- c2   (Minused) gain for output of delay 1.
@@ -753,7 +753,7 @@ filterBandStopBW =
    in proc (sig, freq, band) -> do
         butter -< (sig, bbrset freq band sr)
 
-butter :: (Clock p) => Signal p (Double, ButterData) Double
+butter :: Signal p (Double, ButterData) Double
 butter = proc (sig, ButterData a1 a2 a3 a4 a5) -> do
   rec let t = sig - a4 * y' - a5 * y''
           y = t * a1 + a2 * y' + a3 * y''
@@ -1050,9 +1050,9 @@ tableBessF xint x =
 
 normalizeSegs :: [(SegLength, entPt)] -> [(SegLength, entPt)]
 normalizeSegs segs =
-  let s = sum (map fst segs)
+  let s = sum fmap fst segs)
       fact = if (s > 1) then (1 / s) else 1 -- don't force max<1 up to max=1
-   in map (\(x, y) -> (x * fact, y)) segs
+   in fmap (\(x, y) -> (x * fact, y)) segs
 
 interpLine ::
   StartPt ->
