@@ -19,14 +19,14 @@ import           Control.Arrow.ArrowP
 import           Control.Arrow.Operations
 import           Euterpea.IO.Audio.Types
 import           Euterpea.Music
-
+import           Data.Proxy(Proxy(..))
 
 outA :: (Arrow a) => a b b
 outA = arr id
 
 integral :: forall a p. (ArrowCircuit a, Clock p) => ArrowP a p Double Double
 integral =
-  let dt = 1 / rate (undefined :: p)
+  let dt = 1 / rateProxy (Proxy:: Proxy p)
    in proc x -> do
         rec let i' = i + x * dt
             i <- delay 0 -< i'
@@ -60,8 +60,8 @@ upsample f = g
       if outRate < inRate
         then error "Cannot upsample a signal of higher rate to lower rate"
         else outRate / inRate
-    inRate = rate (undefined :: p1)
-    outRate = rate (undefined :: p2)
+    inRate  = rateProxy (Proxy :: Proxy p1)
+    outRate = rateProxy (Proxy :: Proxy p2)
 
 -- Some useful auxiliary functions.
 
