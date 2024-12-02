@@ -67,6 +67,7 @@ import Foreign.Ptr
 import Foreign.Storable
 import GHC.IO
 import System.Random
+import Data.Proxy(Proxy(..))
 
 -- Conventions:
 
@@ -221,7 +222,7 @@ osc_ ::
   Double ->
   ArrowP a p Double Double
 osc_ phs =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc freq -> do
         rec let delta = 1 / sr * freq
                 phase = if next > 1 then frac next else next
@@ -285,7 +286,7 @@ oscDur_ ::
   Double ->
   ArrowP a p () Double
 oscDur_ osc table@(Table sz _ _) del dur =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
       t1 = del * sr
       t2 = t1 + dur * sr
       v0 = readFromTableRaw table 0
@@ -327,7 +328,7 @@ oscPartials ::
 -- 'freq' is the fundamental frequency in cycles per
 -- second; 'nharms' is the number of harmonics requested.
 oscPartials table initialPhase =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc (freq, nharms) -> do
         rec let delta = 1 / sr * freq
                 phase = if next > 1 then frac next else next
@@ -370,7 +371,7 @@ pluck ::
   PluckDecayMethod ->
   Signal p Double Double
 pluck table pitch method =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc cps -> do
         rec z <- delayLineT (max 64 (truncate (sr / pitch))) table -< y
             z' <- delay 0 -< z
@@ -442,7 +443,7 @@ delayLineT ::
   Table ->
   Signal p Double Double
 delayLineT size table =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
       buf = mkArrWithTable size table
    in proc x -> do
         rec let i' = if i == size - 1 then 0 else i + 1
@@ -469,7 +470,7 @@ delayLine maxdel =
 
 delayLine1 :: forall p. (Clock p) => Double -> Signal p (Double, Double) Double
 delayLine1 maxdel =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
       sz = truncate (sr * maxdel)
       buf = mkArr sz
    in proc (sig, dlt) -> do
@@ -523,7 +524,7 @@ noiseWhite seed =
 
 noiseBLI :: forall p. (Clock p) => Int -> Signal p Double Double
 noiseBLI seed =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
       gen = mkStdGen seed
       (i_n1, i_g1) = random gen :: (Double, StdGen)
       (i_n2, i_g2) = random i_g1 :: (Double, StdGen)
@@ -548,7 +549,7 @@ noiseBLI seed =
 
 noiseBLH :: forall p. (Clock p) => Int -> Signal p Double Double
 noiseBLH seed =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
       gen = mkStdGen seed
       (i_n1, i_g) = random gen :: (Double, StdGen)
       i_pr = (i_n1, i_g)
@@ -580,7 +581,7 @@ balance ihp =
                 else sqrt $ refsum / sqrsum
     outA -< sig * ratio
   where
-    sr = rate (undefined :: p)
+    sr = rateProxy (Proxy :: Proxy p)
     tpidsr = 2 * pi / sr -- tpidsr = two-pi over sr
     b = 2 - cos (fromIntegral ihp * tpidsr)
     c1 = 1 - c2
@@ -631,7 +632,7 @@ filterBandPass scale =
             rsnData' = currData {rsnYt1 = a, rsnYt2 = yt1}
     outA -< a
   where
-    sr = rate (undefined :: p)
+    sr = rateProxy (Proxy :: Proxy p)
     tpidsr = 2 * pi / sr -- tpidsr = two-pi over sr
     update = proc (rsnData, kcf, kbw) -> do
       -- kcf or kbw changed, recalc consts
@@ -725,13 +726,13 @@ bbrset freq band sr = ButterData a1 a2 a3 a4 a5
 
 filterLowPassBW :: forall p. (Clock p) => Signal p (Double, Double) Double
 filterLowPassBW =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc (sig, freq) -> do
         butter -< (sig, blpset freq sr)
 
 filterHighPassBW :: forall p. (Clock p) => Signal p (Double, Double) Double
 filterHighPassBW =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc (sig, freq) -> do
         butter -< (sig, bhpset freq sr)
 
@@ -740,7 +741,7 @@ filterBandPassBW ::
   (Clock p) =>
   Signal p (Double, Double, Double) Double
 filterBandPassBW =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc (sig, freq, band) -> do
         butter -< (sig, bbpset freq band sr)
 
@@ -749,7 +750,7 @@ filterBandStopBW ::
   (Clock p) =>
   Signal p (Double, Double, Double) Double
 filterBandStopBW =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc (sig, freq, band) -> do
         butter -< (sig, bbrset freq band sr)
 
@@ -781,7 +782,7 @@ filterComb looptime =
 
 filterLowPass :: forall p. (Clock p) => Signal p (Double, Double) Double
 filterLowPass =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc (sig, hp) -> do
         rec let y' = c1 * sig + c2 * y
                 b = 2 - cos (2 * pi * hp / sr)
@@ -803,7 +804,7 @@ envLine ::
   Double -> -- Value after 'dur' seconds.
   Signal p () Double
 envLine a dur b =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc () -> do
         rec y <- delay a -< y + (b - a) * (1 / sr / dur)
         outA -< y
@@ -817,7 +818,7 @@ envExpon ::
   -- must be non-zero and must agree in sign with 'a'.
   Signal p () Double
 envExpon a dur b =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
    in proc () -> do
         rec y <- delay a -< y * pow (b / a) (1 / sr / dur)
         outA -< y
@@ -835,7 +836,7 @@ seghlp ::
   -- Needs to be one element fewer than 'iamps'.
   Signal p () (Double, Double, Double, Double)
 seghlp iamps idurs =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
       sz = length iamps
       amps = Tab iamps sz (listArray (0, sz - 1) iamps)
       durs = Tab idurs (sz - 1) (listArray (0, sz - 2) (map (* sr) idurs))
@@ -919,7 +920,7 @@ envCSEnvlpx ::
   -- negative value is illegal.
   Signal p () Double
 envCSEnvlpx rise dur dec tab atss atdec =
-  let sr = rate (undefined :: p)
+  let sr = rateProxy (Proxy :: Proxy p)
       cnt1 = (dur - rise - dec) * sr + 0.5
       -- num of samples in steady state
       mlt1 = pow atss (1 / cnt1)
