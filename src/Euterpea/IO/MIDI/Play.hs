@@ -119,7 +119,7 @@ playC p = if strict p then playStrict p else playInf p
 devices :: IO ()
 devices = do
   (devsIn, devsOut) <- getAllDevices
-  let f (devid, devname) = "  " <> (show devid <> ("\t" ++ name devname ++ "\n"))
+  let f (devid, devname) = "  " <> (show devid <> ("\t" <> name devname <> "\n"))
       strIn = concatMap f devsIn
       strOut = concatMap f devsOut
   putStrLn "\nInput devices: " >> putStrLn strIn
@@ -170,7 +170,7 @@ resolveOutDev Nothing = do
             else
               ( case allOutDevs of
                   x : _ -> x
-                  [] -> error _
+                  [] -> error "resolveOutDev: allOutDev is an Empty List."
               )
         Just x -> unsafeOutputID x
   pure outDev
@@ -215,7 +215,7 @@ musicToMsgs' p m =
           subtract
           ( ( case times of
                 x : _ -> x
-                [] -> error _
+                [] -> error "Error Play.hs in musicToMsgs'"
             )
               : times
           )
@@ -274,7 +274,7 @@ dynamicCP cLim pChan i cMap =
             snd
               ( case reverse cMapNoP of
                   x : _ -> x
-                  [] -> error _
+                  [] -> error  "Error: Play.hs: dynamicCP: cMapNoP is an empty list"
               )
        in if length cMapNoP < cLim - 1
             then linearCP cLim pChan i cMap

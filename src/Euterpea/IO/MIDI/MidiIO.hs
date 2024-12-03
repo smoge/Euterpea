@@ -139,7 +139,7 @@ getAllDevices = do
   n <- countDevices
   deviceInfos <- mapM getDeviceInfo [0 .. n - 1]
   let devs = zip [0 .. n - 1] deviceInfos
-  pure
+  return
     ( [(InputDeviceID d, i) | (d, i) <- devs, input i],
       [(OutputDeviceID d, i) | (d, i) <- devs, output i]
     )
@@ -177,7 +177,8 @@ makePriorityChannel = do
             writeIORef heapRef h'
             pure (Just (a, b))
           Nothing -> pure Nothing
-      peek = fmap fst . Heap.view <$> getHeap
+      peek = do
+        fmap fst . Heap.view <$> getHeap
 
   pure $ PrioChannel getHeap push pop peek
 
@@ -338,7 +339,7 @@ playMidi device midi@(Midi _ division _) = do
           ( toAbsTime
               ( case tracks (toSingleTrack midi) of
                   x : _ -> x
-                  [] -> error _
+                  [] -> error "plaMidi: Empty List"
               )
           )
   midiOutRealTime device >>= maybe (pure ()) (`playMIDIImplementation` track)
@@ -449,12 +450,12 @@ midiEvent (ProgramChange c pn) = Just $ PMMsg (192 .|. fromIntegral c .&. 0xF) (
 midiEvent (ChannelPressure c pr) = Just $ PMMsg (208 .|. fromIntegral c .&. 0xF) (fromIntegral pr) 0
 midiEvent (PitchWheel c pb) = Just $ PMMsg (224 .|. fromIntegral c .&. 0xF) (fromIntegral lo) (fromIntegral hi)
   where
-    (hi, lo) = (shift pb (-8), pb .&. 0xFF)
+    (hi, lo) = (pb `shiftR` 8, pb .&. 0xFF)
 midiEvent _ = Nothing
 
 msgToMidi :: PMMsg -> Maybe Message
 msgToMidi (PMMsg m d1 d2) =
-  let k = shift (m .&. 0xF0) (-4)
+  let k = (m .&. 0xF0) `shiftR` 4
       c = fromIntegral (m .&. 0x0F)
    in case k of
         0x8 -> Just $ NoteOff c (fromIntegral d1) (fromIntegral d2)
@@ -463,7 +464,7 @@ msgToMidi (PMMsg m d1 d2) =
         0xB -> Just $ ControlChange c (fromIntegral d1) (fromIntegral d2)
         0xC -> Just $ ProgramChange c (fromIntegral d1)
         0xD -> Just $ ChannelPressure c (fromIntegral d1)
-        0xE -> Just $ PitchWheel c (fromIntegral (d1 + shift d2 8))
+        0xE -> Just $ PitchWheel c (fromIntegral (d1 + d2 `shiftL` 8))
         0xF -> Nothing -- SysEx event not handled
         _ -> Nothing
 
